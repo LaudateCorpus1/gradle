@@ -51,11 +51,6 @@ class GccLinker implements Compiler<LinkerSpec> {
             List<String> args = new ArrayList<String>();
             
             args.addAll(spec.getSystemArgs());
-            for (String userArg : spec.getArgs()) {
-                args.add("-Xlinker");
-                args.add(userArg);
-            }
-
             if (spec instanceof SharedLibraryLinkerSpec) {
                 args.add("-shared");
                 if (!OperatingSystem.current().isWindows()) {
@@ -71,6 +66,10 @@ class GccLinker implements Compiler<LinkerSpec> {
             args.add(spec.getOutputFile().getAbsolutePath());
             for (File file : spec.getObjectFiles()) {
                 args.add(file.getAbsolutePath());
+            }
+            for (String userArg : spec.getArgs()) {
+                args.add("-Xlinker");
+                args.add(userArg);
             }
             for (File file : spec.getLibraries()) {
                 args.add(file.getAbsolutePath());
