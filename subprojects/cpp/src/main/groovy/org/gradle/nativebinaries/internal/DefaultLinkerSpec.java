@@ -25,6 +25,7 @@ public class DefaultLinkerSpec extends AbstractBinaryToolSpec implements LinkerS
 
     private final List<File> objectFiles = new ArrayList<File>();
     private final List<File> libraries = new ArrayList<File>();
+    private final List<String> systemLibraries = new ArrayList<String>();
     private final List<File> libraryPath = new ArrayList<File>();
     private File outputFile;
 
@@ -42,6 +43,16 @@ public class DefaultLinkerSpec extends AbstractBinaryToolSpec implements LinkerS
 
     public void libraries(Iterable<File> libraries) {
         addAll(this.libraries, libraries);
+    }
+
+    public List<String> getSystemLibraries() {
+        return systemLibraries;
+    }
+
+    public void systemLibraries(Iterable<String> systemLibraries) {
+        for(String library : systemLibraries) {
+            this.systemLibraries.add(library);
+        }
     }
 
     public List<File> getLibraryPath() {

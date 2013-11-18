@@ -49,6 +49,7 @@ class GccLinkerTest extends Specification {
         expectedArgs.addAll(getSoNameProp("installName"))
         expectedArgs.addAll(["-o", outputFile.absolutePath,
                 testDir.file("one.o").absolutePath, testDir.file("two.o").absolutePath])
+        expectedArgs.add('-lm')
 
         when:
         LinkerSpec spec = Mock(SharedLibraryLinkerSpec)
@@ -56,6 +57,7 @@ class GccLinkerTest extends Specification {
         spec.getArgs() >> ['-arg1', '-arg2']
         spec.getOutputFile() >> outputFile
         spec.getLibraries() >> []
+        spec.getSystemLibraries() >> ['m']
         spec.getLibraryPath() >> []
         spec.getInstallName() >> "installName"
         spec.getObjectFiles() >> [testDir.file("one.o"), testDir.file("two.o")]
