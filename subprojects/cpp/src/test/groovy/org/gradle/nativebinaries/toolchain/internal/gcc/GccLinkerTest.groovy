@@ -36,42 +36,42 @@ class GccLinkerTest extends Specification {
     CommandLineTool<LinkerSpec> commandLineTool = new CommandLineTool<LinkerSpec>("linker", executable, execActionFactory)
     GccLinker linker = new GccLinker(commandLineTool, argAction, false);
 
-//    def "compiles all source files in a single execution"() {
-//        given:
-//        def testDir = tmpDirProvider.testDirectory
-//        def outputFile = testDir.file("output/lib")
-//
-//        def execAction = Mock(ExecAction)
-//        final expectedArgs = [
-//                "-sys1", "-sys2",
-//                "-Xlinker", "-arg1", "-Xlinker", "-arg2",
-//                "-shared"]
-//        expectedArgs.addAll(getSoNameProp("installName"))
-//        expectedArgs.addAll(["-o", outputFile.absolutePath,
-//                testDir.file("one.o").absolutePath, testDir.file("two.o").absolutePath])
-//
-//        when:
-//        LinkerSpec spec = Mock(SharedLibraryLinkerSpec)
-//        spec.getSystemArgs() >> ['-sys1', '-sys2']
-//        spec.getArgs() >> ['-arg1', '-arg2']
-//        spec.getOutputFile() >> outputFile
-//        spec.getLibraries() >> []
-//        spec.getLibraryPath() >> []
-//        spec.getInstallName() >> "installName"
-//        spec.getObjectFiles() >> [testDir.file("one.o"), testDir.file("two.o")]
-//
-//        and:
-//        linker.execute(spec)
-//
-//        then:
-//        1 * argAction.execute(expectedArgs)
-//        1 * execActionFactory.newExecAction() >> execAction
-//        1 * execAction.executable(executable)
-//        1 * execAction.args(expectedArgs)
-//        1 * execAction.environment([:])
-//        1 * execAction.execute()
-//        0 * execAction._
-//    }
+    def "compiles all source files in a single execution"() {
+        given:
+        def testDir = tmpDirProvider.testDirectory
+        def outputFile = testDir.file("output/lib")
+
+        def execAction = Mock(ExecAction)
+        final expectedArgs = [
+                "-sys1", "-sys2",
+                "-Xlinker", "-arg1", "-Xlinker", "-arg2",
+                "-shared"]
+        expectedArgs.addAll(getSoNameProp("installName"))
+        expectedArgs.addAll(["-o", outputFile.absolutePath,
+                testDir.file("one.o").absolutePath, testDir.file("two.o").absolutePath])
+
+        when:
+        LinkerSpec spec = Mock(SharedLibraryLinkerSpec)
+        spec.getSystemArgs() >> ['-sys1', '-sys2']
+        spec.getArgs() >> ['-arg1', '-arg2']
+        spec.getOutputFile() >> outputFile
+        spec.getLibraries() >> []
+        spec.getLibraryPath() >> []
+        spec.getInstallName() >> "installName"
+        spec.getObjectFiles() >> [testDir.file("one.o"), testDir.file("two.o")]
+
+        and:
+        linker.execute(spec)
+
+        then:
+        1 * argAction.execute(expectedArgs)
+        1 * execActionFactory.newExecAction() >> execAction
+        1 * execAction.executable(executable)
+        1 * execAction.args(expectedArgs)
+        1 * execAction.environment([:])
+        1 * execAction.execute()
+        0 * execAction._
+    }
 
     List<String> getSoNameProp(def value) {
         if (OperatingSystem.current().isWindows()) {
