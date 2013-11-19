@@ -72,18 +72,18 @@ class GccLinker implements Compiler<LinkerSpec> {
             for (File file : spec.getObjectFiles()) {
                 args.add(file.getAbsolutePath());
             }
+            for (File pathEntry : spec.getLibraryPath()) {
+                // TODO:DAZ It's not clear to me what the correct meaning of this should be for GCC
+                args.add("-L" + pathEntry.getAbsolutePath());
+                //                args.add("-Wl,-L" + pathEntry.getAbsolutePath());
+                //                args.add("-Wl,-rpath," + pathEntry.getAbsolutePath());
+                //                throw new UnsupportedOperationException("Library Path not yet supported on GCC");
+            }
             for (File file : spec.getLibraries()) {
                 args.add(file.getAbsolutePath());
             }
             for (String library : spec.getSystemLibraries()) {
                 args.add("-l" + library);
-            }
-            for (File pathEntry : spec.getLibraryPath()) {
-                // TODO:DAZ It's not clear to me what the correct meaning of this should be for GCC
-//                args.add("-L" + pathEntry.getAbsolutePath());
-//                args.add("-Wl,-L" + pathEntry.getAbsolutePath());
-//                args.add("-Wl,-rpath," + pathEntry.getAbsolutePath());
-                throw new UnsupportedOperationException("Library Path not yet supported on GCC");
             }
             return args;
         }
