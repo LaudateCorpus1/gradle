@@ -104,6 +104,10 @@ public class DefaultToolChainRegistry extends DefaultPolymorphicDomainObjectCont
             return operatingSystem.getStaticLibraryName(libraryName);
         }
 
+        public String getPrecompiledHeaderName(String precompiledHeaderPath) {
+            return precompiledHeaderPath + ".pch";
+        }
+
         public String getOutputType() {
             throw failure();
         }

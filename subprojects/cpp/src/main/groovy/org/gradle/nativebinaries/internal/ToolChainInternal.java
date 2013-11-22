@@ -35,6 +35,8 @@ public interface ToolChainInternal extends ToolChain {
 
     String getStaticLibraryName(String libraryPath);
 
+    String getPrecompiledHeaderName (String precompiledHeaderPath);
+
     /**
      * Returns a unique identifier for the output produced by this toolchain on the current platform.
      */

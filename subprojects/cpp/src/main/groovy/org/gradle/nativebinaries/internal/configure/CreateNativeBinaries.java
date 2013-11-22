@@ -21,9 +21,7 @@ import org.gradle.internal.reflect.Instantiator;
 import org.gradle.language.base.BinaryContainer;
 import org.gradle.model.ModelRule;
 import org.gradle.nativebinaries.*;
-import org.gradle.nativebinaries.internal.DefaultExecutableBinary;
-import org.gradle.nativebinaries.internal.DefaultSharedLibraryBinary;
-import org.gradle.nativebinaries.internal.DefaultStaticLibraryBinary;
+import org.gradle.nativebinaries.internal.*;
 
 public class CreateNativeBinaries extends ModelRule {
     private final Instantiator instantiator;
@@ -39,6 +37,7 @@ public class CreateNativeBinaries extends ModelRule {
         BuildTypeContainer buildTypes = project.getExtensions().getByType(BuildTypeContainer.class);
         ExecutableContainer executables = project.getExtensions().getByType(ExecutableContainer.class);
         LibraryContainer libraries = project.getExtensions().getByType(LibraryContainer.class);
+        PrecompiledHeaderContainer precompiledHeaders = project.getExtensions().getByType(PrecompiledHeaderContainer.class);
 
         NativeBinaryFactory factory = new NativeBinaryFactory(instantiator, project, toolChains, targetPlatforms, buildTypes);
         for (ToolChain toolChain : toolChains) {
@@ -53,6 +52,11 @@ public class CreateNativeBinaries extends ModelRule {
                     for (Executable executable : executables) {
                         for (Flavor flavor : executable.getFlavors()) {
                             binaries.add(factory.createNativeBinary(DefaultExecutableBinary.class, executable, toolChain, targetPlatform, buildType, flavor));
+                        }
+                    }
+                    for (PrecompiledHeader precompiledHeader: precompiledHeaders) {
+                        for (Flavor flavor : precompiledHeader.getFlavors()) {
+                            binaries.add(factory.createNativeBinary(DefaultPrecompiledHeaderBinary.class, precompiledHeader, toolChain, targetPlatform, buildType, flavor));
                         }
                     }
                 }

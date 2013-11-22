@@ -17,11 +17,15 @@
 package org.gradle.nativebinaries.language.c.plugins
 import org.gradle.language.base.FunctionalSourceSet
 import org.gradle.language.c.CSourceSet
+import org.gradle.language.cpp.CppSourceSet
 import org.gradle.nativebinaries.ExecutableBinary
 import org.gradle.nativebinaries.NativeBinary
+import org.gradle.nativebinaries.PrecompiledHeaderBinary
 import org.gradle.nativebinaries.SharedLibraryBinary
 import org.gradle.nativebinaries.StaticLibraryBinary
 import org.gradle.nativebinaries.language.c.tasks.CCompile
+import org.gradle.nativebinaries.language.cpp.plugins.CppNativeBinariesPlugin
+import org.gradle.nativebinaries.language.cpp.tasks.CppCompile
 import org.gradle.util.Matchers
 import org.gradle.util.TestUtil
 import spock.lang.Specification
@@ -39,12 +43,15 @@ class CNativeBinariesPluginTest extends Specification {
             libraries {
                 lib {}
             }
+            precompiledHeaders {
+                header {}
+            }
         }
 
         then:
         def sourceSets = project.sources
-        sourceSets.size() == 2
-        sourceSets*.name == ["exe", "lib"]
+        sourceSets.size() == 3
+        sourceSets*.name == ["exe", "header", "lib"]
 
         and:
         sourceSets.exe instanceof FunctionalSourceSet
@@ -59,6 +66,13 @@ class CNativeBinariesPluginTest extends Specification {
         sourceSets.lib.c.source.srcDirs == [project.file("src/lib/c")] as Set
         sourceSets.lib.c.exportedHeaders.srcDirs == [project.file("src/lib/headers")] as Set
         project.libraries.lib.source == [sourceSets.lib.c] as Set
+
+        and:
+        sourceSets.header instanceof FunctionalSourceSet
+        sourceSets.header.c instanceof CSourceSet
+        sourceSets.header.c.source.srcDirs == [project.file("src/header/c")] as Set
+        sourceSets.header.c.exportedHeaders.srcDirs == [project.file("src/header/headers")] as Set
+        project.precompiledHeaders.header.source == [sourceSets.header.c] as Set
     }
 
     def "can configure source set locations"() {
@@ -185,6 +199,42 @@ class CNativeBinariesPluginTest extends Specification {
         }
         def staticLibTask = staticLib.tasks.createStaticLib
         staticLibTask Matchers.dependsOn("compileTestStaticLibraryTestAnotherOne", "compileTestStaticLibraryTestC")
+    }
+
+    def "creates compile tasks for each precompiled header source set"() {
+        when:
+        dsl {
+            apply plugin: CNativeBinariesPlugin
+            sources {
+                test {
+                    anotherOne(CSourceSet) {}
+                }
+            }
+            precompiledHeaders {
+                test {
+                    binaries.all { NativeBinary binary ->
+                        binary.cCompiler.define "NDEBUG"
+                        binary.cCompiler.define "LEVEL", "1"
+                        binary.cCompiler.args "ARG1", "ARG2"
+                    }
+                }
+            }
+        }
+
+        then:
+        PrecompiledHeaderBinary binary = project.binaries.testPrecompiledHeader
+        binary.tasks.withType(CCompile)*.name == ["compileTestPrecompiledHeaderTestAnotherOne", "compileTestPrecompiledHeaderTestC"]
+
+        and:
+        binary.tasks.withType(CCompile).each { compile ->
+            compile.toolChain == binary.toolChain
+            compile.macros == [NDEBUG:null, LEVEL:"1"]
+            compile.compilerArgs == ["ARG1", "ARG2"]
+        }
+
+        and:
+        def linkTask = binary.tasks.link
+        linkTask == null
     }
 
     def dsl(Closure closure) {

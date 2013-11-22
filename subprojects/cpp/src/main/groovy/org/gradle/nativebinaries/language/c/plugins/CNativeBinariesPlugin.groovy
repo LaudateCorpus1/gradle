@@ -46,11 +46,18 @@ class CNativeBinariesPlugin implements Plugin<ProjectInternal> {
             addLanguageExtensionsToComponent(library)
         }
 
+        project.precompiledHeaders.all { PrecompiledHeader header ->
+            addLanguageExtensionsToComponent(header)
+        }
+
         project.binaries.withType(NativeBinary) { NativeBinaryInternal binary ->
             binary.source.withType(CSourceSet).all { CSourceSet sourceSet ->
                 def compileTask = createCompileTask(project, binary, sourceSet)
                 binary.tasks.add compileTask
-                binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
+                if (binary instanceof PrecompiledHeaderBinary)
+                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.pch', '**/*.gch' }
+                else
+                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
             }
         }
     }

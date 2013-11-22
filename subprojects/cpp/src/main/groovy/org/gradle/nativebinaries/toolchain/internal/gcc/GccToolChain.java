@@ -81,6 +81,11 @@ public class GccToolChain extends AbstractGccCompatibleToolChain implements Gcc 
         }
     }
 
+    @Override
+    public String getPrecompiledHeaderName(String precompiledHeaderPath) {
+        return precompiledHeaderPath + ".gch";
+    }
+
     private void determineVersion() {
         version = determineVersion(tools.locate(ToolType.CPP_COMPILER));
         if (version == null) {

@@ -17,38 +17,32 @@
 package org.gradle.nativebinaries.toolchain.internal.gcc;
 
 import org.gradle.api.Action;
-import org.gradle.api.internal.tasks.compile.Compiler;
 import org.gradle.api.tasks.WorkResult;
-import org.gradle.nativebinaries.language.c.internal.CCompileSpec;
+import org.gradle.nativebinaries.language.cpp.internal.CppCompileSpec;
 import org.gradle.nativebinaries.toolchain.internal.ArgsTransformer;
 import org.gradle.nativebinaries.toolchain.internal.CommandLineTool;
 
 import java.util.List;
 
-class CCompiler implements Compiler<CCompileSpec> {
+public class CppHeaderPrecompiler extends CppCompiler {
+    private final CommandLineTool<CppCompileSpec> commandLineTool;
 
-    private final CommandLineTool<CCompileSpec> commandLineTool;
-
-    public CCompiler() {
-        commandLineTool = null;
-    }
-
-    public CCompiler(CommandLineTool<CCompileSpec> commandLineTool, Action<List<String>> argsAction, boolean useCommandFile) {
-        ArgsTransformer<CCompileSpec> argsTransformer = new CCompileArgsTransformer();
-        argsTransformer = new UserArgsTransformer<CCompileSpec>(argsTransformer, argsAction);
+    public CppHeaderPrecompiler(CommandLineTool<CppCompileSpec> commandLineTool, Action<List<String>> argsAction, boolean useCommandFile) {
+        ArgsTransformer<CppCompileSpec> argsTransformer = new CppHeaderPrecompileArgsTransformer();
+        argsTransformer = new UserArgsTransformer<CppCompileSpec>(argsTransformer, argsAction);
         if (useCommandFile) {
-            argsTransformer = new GccOptionsFileArgTransformer<CCompileSpec>(argsTransformer);
+            argsTransformer = new GccOptionsFileArgTransformer<CppCompileSpec>(argsTransformer);
         }
         this.commandLineTool = commandLineTool.withArguments(argsTransformer);
     }
 
-    public WorkResult execute(CCompileSpec spec) {
+    public WorkResult execute(CppCompileSpec spec) {
         return commandLineTool.inWorkDirectory(spec.getObjectFileDir()).execute(spec);
     }
 
-    private static class CCompileArgsTransformer extends GccCompilerArgsTransformer<CCompileSpec> {
+    private static class CppHeaderPrecompileArgsTransformer extends GccCompilerArgsTransformer<CppCompileSpec> {
         protected String getLanguage() {
-            return "c";
+            return "c++-header";
         }
     }
 }

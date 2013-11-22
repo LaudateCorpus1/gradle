@@ -51,11 +51,20 @@ class CppNativeBinariesPlugin implements Plugin<ProjectInternal> {
             }
         }
 
+        project.precompiledHeaders.all { PrecompiledHeader header ->
+            header.binaries.all { binary ->
+                binary.extensions.create("cppCompiler", DefaultPreprocessingTool)
+            }
+        }
+
         project.binaries.withType(NativeBinary) { NativeBinaryInternal binary ->
             binary.source.withType(CppSourceSet).all { CppSourceSet sourceSet ->
                 def compileTask = createCompileTask(project, binary, sourceSet)
                 binary.tasks.add compileTask
-                binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
+                if (binary instanceof PrecompiledHeaderBinary)
+                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.pch', '**/*.gch' }
+                else
+                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
             }
         }
     }
@@ -67,7 +76,7 @@ class CppNativeBinariesPlugin implements Plugin<ProjectInternal> {
 
         compileTask.toolChain = binary.toolChain
         compileTask.targetPlatform = binary.targetPlatform
-        compileTask.positionIndependentCode = binary instanceof SharedLibraryBinary
+        compileTask.positionIndependentCode = binary instanceof SharedLibraryBinary // TODO: Review this
 
         compileTask.includes sourceSet.exportedHeaders
         compileTask.source sourceSet.source

@@ -82,6 +82,10 @@ public abstract class AbstractToolChain implements ToolChainInternal {
         return operatingSystem.getStaticLibraryName(libraryName);
     }
 
+    public String getPrecompiledHeaderName(String precompiledHeaderPath) {
+        return precompiledHeaderPath + ".pch";
+    }
+
     protected File resolve(Object path) {
         return fileResolver.resolve(path);
     }

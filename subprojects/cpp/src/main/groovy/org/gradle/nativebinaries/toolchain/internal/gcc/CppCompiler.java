@@ -29,6 +29,10 @@ class CppCompiler implements Compiler<CppCompileSpec> {
 
     private final CommandLineTool<CppCompileSpec> commandLineTool;
 
+    public CppCompiler() {
+        commandLineTool = null;
+    }
+
     public CppCompiler(CommandLineTool<CppCompileSpec> commandLineTool, Action<List<String>> argsAction, boolean useCommandFile) {
         ArgsTransformer<CppCompileSpec> argsTransformer = new CppCompileArgsTransformer();
         argsTransformer = new UserArgsTransformer<CppCompileSpec>(argsTransformer, argsAction);

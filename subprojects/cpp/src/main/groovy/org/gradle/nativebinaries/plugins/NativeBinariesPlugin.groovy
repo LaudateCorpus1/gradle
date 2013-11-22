@@ -41,6 +41,9 @@ public class NativeBinariesPlugin implements Plugin<Project> {
         project.getExtensions().getByType(LibraryContainer).all { Library lib ->
             lib.source projectSourceSet.maybeCreate(lib.name)
         }
+        project.getExtensions().getByType(PrecompiledHeaderContainer).all { PrecompiledHeader header ->
+            header.source projectSourceSet.maybeCreate(header.name)
+        }
 
         final BinaryContainer binaries = project.getExtensions().getByType(BinaryContainer.class);
         binaries.withType(NativeBinary) { NativeBinaryInternal binary ->
@@ -56,6 +59,8 @@ public class NativeBinariesPlugin implements Plugin<Project> {
         def builderTask
         if (binary instanceof StaticLibraryBinary) {
             builderTask = createStaticLibraryTask(project, binary)
+        } else if (binary instanceof PrecompiledHeaderBinary) {
+            builderTask = createDummyTask(project, binary)
         } else {
             builderTask = createLinkTask(project, binary)
         }
@@ -118,4 +123,15 @@ public class NativeBinariesPlugin implements Plugin<Project> {
 
         installTask.dependsOn(executable)
     }
-}
+
+    def createDummyTask(ProjectInternal project, NativeBinaryInternal binary) {
+        DummyLinkTask task = project.task(binary.namingScheme.getTaskName("dummy"), type: DummyLinkTask) {
+            group = BasePlugin.BUILD_GROUP
+        }
+        task.source binary.source
+        task.toolChain = binary.toolChain
+        task.targetPlatform = binary.targetPlatform
+        task.outputFile = binary.outputFile
+        return task
+    }
+    }
