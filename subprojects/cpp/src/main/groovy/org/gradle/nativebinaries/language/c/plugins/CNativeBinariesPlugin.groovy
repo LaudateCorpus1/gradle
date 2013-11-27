@@ -54,10 +54,11 @@ class CNativeBinariesPlugin implements Plugin<ProjectInternal> {
             binary.source.withType(CSourceSet).all { CSourceSet sourceSet ->
                 def compileTask = createCompileTask(project, binary, sourceSet)
                 binary.tasks.add compileTask
-                if (binary instanceof PrecompiledHeaderBinary)
+                if (binary instanceof PrecompiledHeaderBinary) {
                     binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.pch', '**/*.gch' }
-                else
+                } else {
                     binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
+                }
             }
         }
     }

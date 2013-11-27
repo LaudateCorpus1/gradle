@@ -17,15 +17,12 @@
 package org.gradle.nativebinaries.language.c.plugins
 import org.gradle.language.base.FunctionalSourceSet
 import org.gradle.language.c.CSourceSet
-import org.gradle.language.cpp.CppSourceSet
 import org.gradle.nativebinaries.ExecutableBinary
 import org.gradle.nativebinaries.NativeBinary
 import org.gradle.nativebinaries.PrecompiledHeaderBinary
 import org.gradle.nativebinaries.SharedLibraryBinary
 import org.gradle.nativebinaries.StaticLibraryBinary
 import org.gradle.nativebinaries.language.c.tasks.CCompile
-import org.gradle.nativebinaries.language.cpp.plugins.CppNativeBinariesPlugin
-import org.gradle.nativebinaries.language.cpp.tasks.CppCompile
 import org.gradle.util.Matchers
 import org.gradle.util.TestUtil
 import spock.lang.Specification

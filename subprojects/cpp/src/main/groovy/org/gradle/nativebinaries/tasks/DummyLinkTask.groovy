@@ -19,12 +19,7 @@ package org.gradle.nativebinaries.tasks
 import org.gradle.api.DefaultTask
 import org.gradle.api.Incubating
 import org.gradle.api.file.FileCollection
-import org.gradle.api.internal.file.FileOperations
 import org.gradle.api.tasks.*
-import org.gradle.internal.reflect.Instantiator
-import org.gradle.language.jvm.internal.SimpleStaleClassCleaner
-import org.gradle.nativebinaries.Platform
-import org.gradle.nativebinaries.ToolChain
 
 import javax.inject.Inject
 

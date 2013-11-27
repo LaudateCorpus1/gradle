@@ -45,10 +45,12 @@ public class DefaultNativeBinaryTasks extends DefaultDomainObjectSet<Task> imple
 
     public BuildBinaryTask getBuilder() {
         BuildBinaryTask link = getLink();
-        if (link == null)
+        if (link == null) {
             link = getCreateStaticLib();
-        if (link == null)
+        }
+        if (link == null) {
             link = getDummy();
+        }
         return link;
     }
 
