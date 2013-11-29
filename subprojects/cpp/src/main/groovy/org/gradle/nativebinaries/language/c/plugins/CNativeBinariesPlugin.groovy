@@ -22,6 +22,7 @@ import org.gradle.language.c.plugins.CLangPlugin
 import org.gradle.nativebinaries.*
 import org.gradle.nativebinaries.internal.NativeBinaryInternal
 import org.gradle.nativebinaries.language.c.tasks.CCompile
+import org.gradle.nativebinaries.language.c.tasks.CPrecompileHeader
 import org.gradle.nativebinaries.language.internal.DefaultPreprocessingTool
 import org.gradle.nativebinaries.plugins.NativeBinariesPlugin
 /**
@@ -46,19 +47,14 @@ class CNativeBinariesPlugin implements Plugin<ProjectInternal> {
             addLanguageExtensionsToComponent(library)
         }
 
-        project.precompiledHeaders.all { PrecompiledHeader header ->
-            addLanguageExtensionsToComponent(header)
-        }
-
         project.binaries.withType(NativeBinary) { NativeBinaryInternal binary ->
             binary.source.withType(CSourceSet).all { CSourceSet sourceSet ->
+                def precompileHeaderTask = createHeaderPrecompileTask(project, binary, sourceSet)
+                binary.tasks.add precompileHeaderTask
                 def compileTask = createCompileTask(project, binary, sourceSet)
+                compileTask.dependsOn precompileHeaderTask
                 binary.tasks.add compileTask
-                if (binary instanceof PrecompiledHeaderBinary) {
-                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.pch', '**/*.gch' }
-                } else {
-                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
-                }
+                binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
             }
         }
     }
@@ -91,4 +87,26 @@ class CNativeBinariesPlugin implements Plugin<ProjectInternal> {
         compileTask
     }
 
+    private def createHeaderPrecompileTask(ProjectInternal project, NativeBinaryInternal binary, CSourceSet sourceSet) {
+        def compileTask = project.task(binary.namingScheme.getTaskName("precompileHeader", sourceSet.fullName), type: CPrecompileHeader) {
+            description = "Precompiles header for $sourceSet of $binary"
+        }
+
+        compileTask.toolChain = binary.toolChain
+        compileTask.targetPlatform = binary.targetPlatform
+        compileTask.positionIndependentCode = binary instanceof SharedLibraryBinary // TODO: Review this
+
+        compileTask.includes sourceSet.exportedHeaders
+        compileTask.precompiledHeaders sourceSet.precompiledHeaders
+        compileTask.source sourceSet.precompiledHeaders
+        binary.getLibs(sourceSet).each { deps ->
+            compileTask.includes deps.includeRoots
+        }
+
+        compileTask.objectFileDir = project.file("${project.buildDir}/objectFiles/${binary.namingScheme.outputDirectoryBase}/${sourceSet.fullName}")
+        compileTask.macros = binary.cCompiler.macros
+        compileTask.compilerArgs = binary.cCompiler.args
+
+        compileTask
+    }
 }

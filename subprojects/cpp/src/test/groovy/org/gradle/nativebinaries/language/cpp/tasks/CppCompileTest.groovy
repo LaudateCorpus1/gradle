@@ -35,6 +35,7 @@ class CppCompileTest extends Specification {
 
     def "executes using the CppCompiler"() {
         def sourceFile = testDir.createFile("sourceFile")
+        def header = testDir.createFile("header")
         def result = Mock(WorkResult)
         when:
         cppCompile.toolChain = toolChain
@@ -43,6 +44,7 @@ class CppCompileTest extends Specification {
         cppCompile.macros = [def: "value"]
         cppCompile.objectFileDir = testDir.file("outputFile")
         cppCompile.source sourceFile
+        cppCompile.precompiledHeaders header
         cppCompile.execute()
 
         then:
@@ -52,6 +54,7 @@ class CppCompileTest extends Specification {
         1 * platformToolChain.createCppCompiler() >> cppCompiler
         1 * cppCompiler.execute({ CppCompileSpec spec ->
             assert spec.sourceFiles*.name == ["sourceFile"]
+            assert spec.precompiledHeaders*.name == ["header"]
             assert spec.args == ['arg']
             assert spec.allArgs == ['arg']
             assert spec.macros == [def: 'value']

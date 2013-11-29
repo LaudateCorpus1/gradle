@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2012 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,12 @@ import org.gradle.nativebinaries.toolchain.internal.NativeCompileSpec
 
 import javax.inject.Inject
 /**
- * Compiles C source files into object files.
+ * Precompiles C headers.
  */
 @Incubating
-class CCompile extends AbstractNativeCompileTask {
+class CPrecompileHeader extends AbstractNativeCompileTask {
     @Inject
-    CCompile(CacheRepository cacheRepository) {
+    CPrecompileHeader(CacheRepository cacheRepository) {
         super(cacheRepository)
     }
 
@@ -39,11 +39,6 @@ class CCompile extends AbstractNativeCompileTask {
 
     @Override
     protected org.gradle.api.internal.tasks.compile.Compiler<NativeCompileSpec> createCompiler(PlatformToolChain toolChain) {
-        toolChain.createCCompiler()
-    }
-
-    @Override
-    protected org.gradle.api.internal.tasks.compile.Compiler<NativeCompileSpec> createHeaderPrecompiler(PlatformToolChain toolChain) {
-        return toolChain.createCHeaderPrecompiler()
+        return toolChain.createCppHeaderPrecompiler()
     }
 }

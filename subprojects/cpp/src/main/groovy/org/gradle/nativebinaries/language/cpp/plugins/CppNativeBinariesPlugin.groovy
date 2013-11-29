@@ -22,6 +22,7 @@ import org.gradle.language.cpp.plugins.CppLangPlugin
 import org.gradle.nativebinaries.*
 import org.gradle.nativebinaries.internal.NativeBinaryInternal
 import org.gradle.nativebinaries.language.cpp.tasks.CppCompile
+import org.gradle.nativebinaries.language.cpp.tasks.CppPrecompileHeader
 import org.gradle.nativebinaries.language.internal.DefaultPreprocessingTool
 import org.gradle.nativebinaries.plugins.NativeBinariesPlugin
 /**
@@ -51,21 +52,14 @@ class CppNativeBinariesPlugin implements Plugin<ProjectInternal> {
             }
         }
 
-        project.precompiledHeaders.all { PrecompiledHeader header ->
-            header.binaries.all { binary ->
-                binary.extensions.create("cppCompiler", DefaultPreprocessingTool)
-            }
-        }
-
         project.binaries.withType(NativeBinary) { NativeBinaryInternal binary ->
             binary.source.withType(CppSourceSet).all { CppSourceSet sourceSet ->
+                def precompileHeaderTask = createHeaderPrecompileTask(project, binary, sourceSet)
+                binary.tasks.add precompileHeaderTask
                 def compileTask = createCompileTask(project, binary, sourceSet)
+                compileTask.dependsOn precompileHeaderTask
                 binary.tasks.add compileTask
-                if (binary instanceof PrecompiledHeaderBinary) {
-                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.pch', '**/*.gch' }
-                } else {
-                    binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
-                }
+                binary.tasks.builder.source compileTask.outputs.files.asFileTree.matching { include '**/*.obj', '**/*.o' }
             }
         }
     }
@@ -81,6 +75,29 @@ class CppNativeBinariesPlugin implements Plugin<ProjectInternal> {
 
         compileTask.includes sourceSet.exportedHeaders
         compileTask.source sourceSet.source
+        binary.getLibs(sourceSet).each { deps ->
+            compileTask.includes deps.includeRoots
+        }
+
+        compileTask.objectFileDir = project.file("${project.buildDir}/objectFiles/${binary.namingScheme.outputDirectoryBase}/${sourceSet.fullName}")
+        compileTask.macros = binary.cppCompiler.macros
+        compileTask.compilerArgs = binary.cppCompiler.args
+
+        compileTask
+    }
+
+    private def createHeaderPrecompileTask(ProjectInternal project, NativeBinaryInternal binary, CppSourceSet sourceSet) {
+        def compileTask = project.task(binary.namingScheme.getTaskName("precompileHeader", sourceSet.fullName), type: CppPrecompileHeader) {
+            description = "Precompiles header for $sourceSet of $binary"
+        }
+
+        compileTask.toolChain = binary.toolChain
+        compileTask.targetPlatform = binary.targetPlatform
+        compileTask.positionIndependentCode = binary instanceof SharedLibraryBinary // TODO: Review this
+
+        compileTask.includes sourceSet.exportedHeaders
+        compileTask.precompiledHeaders sourceSet.precompiledHeaders
+        compileTask.source sourceSet.precompiledHeaders
         binary.getLibs(sourceSet).each { deps ->
             compileTask.includes deps.includeRoots
         }

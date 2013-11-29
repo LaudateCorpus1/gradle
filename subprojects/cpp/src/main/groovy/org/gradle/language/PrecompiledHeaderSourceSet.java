@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2011 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,15 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.gradle.language;
 
-package org.gradle.nativebinaries;
-
+import org.gradle.api.Action;
 import org.gradle.api.Incubating;
+import org.gradle.api.file.SourceDirectorySet;
+import org.gradle.language.base.LanguageSourceSet;
 
 /**
- * A binary artifact that is built from a {@link PrecompiledHeader}, targeted at a particular platform with specific configuration.
+ * A source set that exposes precompiled headers
  */
 @Incubating
-public interface PrecompiledHeaderBinary extends NativeBinary {
-    PrecompiledHeader getComponent();
+public interface PrecompiledHeaderSourceSet extends LanguageSourceSet {
+
+    /**
+     * Configure the precompiled headers.
+     */
+    void precompiledHeaders(Action<? super SourceDirectorySet> config);
+
+    /**
+     * The headers as a directory set.
+     */
+    SourceDirectorySet getPrecompiledHeaders();
 }

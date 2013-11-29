@@ -19,10 +19,10 @@ import org.gradle.language.base.FunctionalSourceSet
 import org.gradle.language.cpp.CppSourceSet
 import org.gradle.nativebinaries.ExecutableBinary
 import org.gradle.nativebinaries.NativeBinary
-import org.gradle.nativebinaries.PrecompiledHeaderBinary
 import org.gradle.nativebinaries.SharedLibraryBinary
 import org.gradle.nativebinaries.StaticLibraryBinary
 import org.gradle.nativebinaries.language.cpp.tasks.CppCompile
+import org.gradle.nativebinaries.language.cpp.tasks.CppPrecompileHeader
 import org.gradle.util.Matchers
 import org.gradle.util.TestUtil
 import spock.lang.Specification
@@ -40,21 +40,19 @@ class CppNativeBinariesPluginTest extends Specification {
             libraries {
                 lib {}
             }
-            precompiledHeaders {
-                header {}
-            }
         }
 
         then:
         def sourceSets = project.sources
-        sourceSets.size() == 3
-        sourceSets*.name == ["exe", "header", "lib"]
+        sourceSets.size() == 2
+        sourceSets*.name == ["exe", "lib"]
 
         and:
         sourceSets.exe instanceof FunctionalSourceSet
         sourceSets.exe.cpp instanceof CppSourceSet
         sourceSets.exe.cpp.source.srcDirs == [project.file("src/exe/cpp")] as Set
         sourceSets.exe.cpp.exportedHeaders.srcDirs == [project.file("src/exe/headers")] as Set
+        sourceSets.exe.cpp.precompiledHeaders.srcDirs == [] as Set
         project.executables.exe.source == [sourceSets.exe.cpp] as Set
 
         and:
@@ -62,14 +60,8 @@ class CppNativeBinariesPluginTest extends Specification {
         sourceSets.lib.cpp instanceof CppSourceSet
         sourceSets.lib.cpp.source.srcDirs == [project.file("src/lib/cpp")] as Set
         sourceSets.lib.cpp.exportedHeaders.srcDirs == [project.file("src/lib/headers")] as Set
+        sourceSets.lib.cpp.precompiledHeaders.srcDirs == [] as Set
         project.libraries.lib.source == [sourceSets.lib.cpp] as Set
-
-        and:
-        sourceSets.header instanceof FunctionalSourceSet
-        sourceSets.header.cpp instanceof CppSourceSet
-        sourceSets.header.cpp.source.srcDirs == [project.file("src/header/cpp")] as Set
-        sourceSets.header.cpp.exportedHeaders.srcDirs == [project.file("src/header/headers")] as Set
-        project.precompiledHeaders.header.source == [sourceSets.header.cpp] as Set
     }
 
     def "can configure source set locations"() {
@@ -85,6 +77,9 @@ class CppNativeBinariesPluginTest extends Specification {
                         exportedHeaders {
                             srcDirs "h1", "h2"
                         }
+                        precompiledHeaders {
+                            srcDirs "ph1", "ph2"
+                        }
                     }
                 }
                 lib {
@@ -94,6 +89,9 @@ class CppNativeBinariesPluginTest extends Specification {
                         }
                         exportedHeaders {
                             srcDirs "h3"
+                        }
+                        precompiledHeaders {
+                            srcDirs "ph3"
                         }
                     }
                 }
@@ -105,11 +103,13 @@ class CppNativeBinariesPluginTest extends Specification {
         with (sourceSets.exe.cpp) {
             source.srcDirs*.name == ["d1", "d2"]
             exportedHeaders.srcDirs*.name == ["h1", "h2"]
+            precompiledHeaders.srcDirs*.name == ["ph1", "ph2"]
         }
 
         with (sourceSets.lib.cpp) {
             source.srcDirs*.name == ["d3"]
             exportedHeaders.srcDirs*.name == ["h3"]
+            precompiledHeaders.srcDirs*.name == ["ph3"]
         }
     }
 
@@ -136,12 +136,21 @@ class CppNativeBinariesPluginTest extends Specification {
         then:
         ExecutableBinary binary = project.binaries.testExecutable
         binary.tasks.withType(CppCompile)*.name == ["compileTestExecutableTestAnotherCpp", "compileTestExecutableTestCpp"]
+        binary.tasks.withType(CppPrecompileHeader)*.name == ["precompileHeaderTestExecutableTestAnotherCpp", "precompileHeaderTestExecutableTestCpp"]
 
         and:
         binary.tasks.withType(CppCompile).each { compile ->
             compile.toolChain == binary.toolChain
             compile.macros == [NDEBUG:null, LEVEL:"1"]
             compile.compilerArgs == ["ARG1", "ARG2"]
+            compile.taskDependencies.grep{ it instanceof CppPrecompileHeader }.size() == 1
+        }
+
+        and:
+        binary.tasks.withType(CppPrecompileHeader).each {
+            it.toolChain == binary.toolChain
+            it.macros == [NDEBUG:null, LEVEL:"1"]
+            it.compilerArgs == ["ARG1", "ARG2"]
         }
 
         and:
@@ -178,10 +187,13 @@ class CppNativeBinariesPluginTest extends Specification {
         then:
         SharedLibraryBinary sharedLib = project.binaries.testSharedLibrary
         sharedLib.tasks.withType(CppCompile)*.name == ["compileTestSharedLibraryTestAnotherCpp", "compileTestSharedLibraryTestCpp"]
+        sharedLib.tasks.withType(CppPrecompileHeader)*.name == ["precompileHeaderTestSharedLibraryTestAnotherCpp", "precompileHeaderTestSharedLibraryTestCpp"]
+
         sharedLib.tasks.withType(CppCompile).each { compile ->
             compile.toolChain == sharedLib.toolChain
             compile.macros == [NDEBUG:null, LEVEL:"1"]
             compile.compilerArgs == ["ARG1", "ARG2", "SHARED1", "SHARED2"]
+            compile.taskDependencies.grep{ it instanceof CppPrecompileHeader }.size() == 1
         }
         def sharedLinkTask = sharedLib.tasks.link
         sharedLinkTask Matchers.dependsOn("compileTestSharedLibraryTestAnotherCpp", "compileTestSharedLibraryTestCpp")
@@ -193,45 +205,10 @@ class CppNativeBinariesPluginTest extends Specification {
             compile.toolChain == sharedLib.toolChain
             compile.macros == [NDEBUG:null, LEVEL:"1"]
             compile.compilerArgs == ["ARG1", "ARG2", "STATIC1", "STATIC2"]
+            compile.taskDependencies.grep{ it instanceof CppPrecompileHeader }.size() == 1
         }
         def staticLibTask = staticLib.tasks.createStaticLib
         staticLibTask Matchers.dependsOn("compileTestStaticLibraryTestAnotherCpp", "compileTestStaticLibraryTestCpp")
-    }
-
-    def "creates compile tasks for each precompiled header source set"() {
-        when:
-        dsl {
-            apply plugin: CppNativeBinariesPlugin
-            sources {
-                test {
-                    anotherCpp(CppSourceSet) {}
-                }
-            }
-            precompiledHeaders {
-                test {
-                    binaries.all { NativeBinary binary ->
-                        binary.cppCompiler.define "NDEBUG"
-                        binary.cppCompiler.define "LEVEL", "1"
-                        binary.cppCompiler.args "ARG1", "ARG2"
-                    }
-                }
-            }
-        }
-
-        then:
-        PrecompiledHeaderBinary binary = project.binaries.testPrecompiledHeader
-        binary.tasks.withType(CppCompile)*.name == ["compileTestPrecompiledHeaderTestAnotherCpp", "compileTestPrecompiledHeaderTestCpp"]
-
-        and:
-        binary.tasks.withType(CppCompile).each { compile ->
-            compile.toolChain == binary.toolChain
-            compile.macros == [NDEBUG:null, LEVEL:"1"]
-            compile.compilerArgs == ["ARG1", "ARG2"]
-        }
-
-        and:
-        def linkTask = binary.tasks.link
-        linkTask == null
     }
 
     def dsl(Closure closure) {

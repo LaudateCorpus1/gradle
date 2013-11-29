@@ -40,7 +40,6 @@ class NativeBinariesModelPluginTest extends Specification {
         project.modelRegistry.get("toolChains", ToolChainRegistry)
         project.targetPlatforms instanceof NamedDomainObjectContainer
         project.buildTypes instanceof NamedDomainObjectContainer
-        project.precompiledHeaders instanceof NamedDomainObjectContainer
     }
 
     def "adds default tool chain, target platform and build type"() {
@@ -74,13 +73,11 @@ class NativeBinariesModelPluginTest extends Specification {
         when:
         project.executables.create "exe"
         project.libraries.create "lib"
-        project.precompiledHeaders.create "header"
         project.evaluate()
 
         then:
         one(project.executables.exe.flavors).name == DefaultFlavor.DEFAULT
         one(project.libraries.lib.flavors).name == DefaultFlavor.DEFAULT
-        one(project.precompiledHeaders.header.flavors).name == DefaultFlavor.DEFAULT
     }
 
     def "does not add defaults when domain is explicitly configured"() {
@@ -175,39 +172,11 @@ class NativeBinariesModelPluginTest extends Specification {
         library.binaries.contains(staticLibraryBinary)
     }
 
-    def "creates binaries for precompiled header"() {
-        when:
-        project.plugins.apply(NativeBinariesModelPlugin)
-        project.model {
-            toolChains {
-                add named(ToolChainInternal, "tc")
-            }
-        }
-        project.targetPlatforms.add named(Platform, "platform")
-        project.buildTypes.add named(BuildType, "bt")
-        def header = project.precompiledHeaders.create "test"
-        project.evaluate()
-
-        then:
-        PrecompiledHeaderBinary binary = one(project.binaries) as PrecompiledHeaderBinary
-        with (binary) {
-            name == 'testPrecompiledHeader'
-            component == header
-            toolChain.name == "tc"
-            targetPlatform.name == "platform"
-            buildType.name == "bt"
-        }
-
-        and:
-        header.binaries == [binary] as Set
-    }
-
     def "creates lifecycle task for each binary"() {
         when:
         project.plugins.apply(NativeBinariesModelPlugin)
         def executable = project.executables.create "exe"
         def library = project.libraries.create "lib"
-        def header = project.precompiledHeaders.create "header"
         project.evaluate()
 
         then:
@@ -224,11 +193,6 @@ class NativeBinariesModelPluginTest extends Specification {
         StaticLibraryBinary staticLibraryBinary = project.binaries.libStaticLibrary as StaticLibraryBinary
         with (oneTask(staticLibraryBinary.buildDependencies)) {
             name == staticLibraryBinary.name
-            group == BasePlugin.BUILD_GROUP
-        }
-        PrecompiledHeaderBinary headerBinary = project.binaries.headerPrecompiledHeader as PrecompiledHeaderBinary
-        with (oneTask(headerBinary.buildDependencies)) {
-            name == headerBinary.name
             group == BasePlugin.BUILD_GROUP
         }
     }

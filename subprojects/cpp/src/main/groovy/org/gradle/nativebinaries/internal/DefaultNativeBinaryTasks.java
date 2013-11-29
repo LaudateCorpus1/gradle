@@ -24,7 +24,6 @@ import org.gradle.nativebinaries.NativeBinaryTasks;
 import org.gradle.nativebinaries.tasks.AbstractLinkTask;
 import org.gradle.nativebinaries.tasks.BuildBinaryTask;
 import org.gradle.nativebinaries.tasks.CreateStaticLibrary;
-import org.gradle.nativebinaries.tasks.DummyLinkTask;
 
 public class DefaultNativeBinaryTasks extends DefaultDomainObjectSet<Task> implements NativeBinaryTasks {
     public DefaultNativeBinaryTasks() {
@@ -39,17 +38,10 @@ public class DefaultNativeBinaryTasks extends DefaultDomainObjectSet<Task> imple
         return findOnlyWithType(CreateStaticLibrary.class);
     }
 
-    public DummyLinkTask getDummy() {
-        return findOnlyWithType(DummyLinkTask.class);
-    }
-
     public BuildBinaryTask getBuilder() {
         BuildBinaryTask link = getLink();
         if (link == null) {
             link = getCreateStaticLib();
-        }
-        if (link == null) {
-            link = getDummy();
         }
         return link;
     }

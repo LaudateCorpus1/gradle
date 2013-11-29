@@ -21,7 +21,6 @@ import org.gradle.nativebinaries.internal.PlatformInternal
 import org.gradle.nativebinaries.internal.PlatformToolChain
 import org.gradle.nativebinaries.internal.ToolChainInternal
 import org.gradle.nativebinaries.language.c.internal.CCompileSpec
-import org.gradle.nativebinaries.language.cpp.internal.CppCompileSpec
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.gradle.util.TestUtil
 import spock.lang.Specification
@@ -32,10 +31,11 @@ class CCompileTest extends Specification {
     def toolChain = Mock(ToolChainInternal)
     def platform = Mock(PlatformInternal)
     def platformToolChain = Mock(PlatformToolChain)
-    Compiler<CppCompileSpec> cCompiler = Mock(Compiler)
+    Compiler<CCompileSpec> cCompiler = Mock(Compiler)
 
     def "executes using the C Compiler"() {
         def sourceFile = testDir.createFile("sourceFile")
+        def header = testDir.createFile("header")
         def result = Mock(WorkResult)
         when:
         cCompile.toolChain = toolChain
@@ -44,6 +44,7 @@ class CCompileTest extends Specification {
         cCompile.macros = [def: "value"]
         cCompile.objectFileDir = testDir.file("outputFile")
         cCompile.source sourceFile
+        cCompile.precompiledHeaders header
         cCompile.execute()
 
         then:
@@ -53,6 +54,7 @@ class CCompileTest extends Specification {
         1 * platformToolChain.createCCompiler() >> cCompiler
         1 * cCompiler.execute({ CCompileSpec spec ->
             assert spec.sourceFiles*.name== ["sourceFile"]
+            assert spec.precompiledHeaders*.name == ["header"]
             assert spec.args == ['arg']
             assert spec.allArgs == ['arg']
             assert spec.macros == [def: 'value']

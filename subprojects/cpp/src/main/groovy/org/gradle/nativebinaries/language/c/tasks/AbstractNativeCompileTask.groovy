@@ -73,6 +73,12 @@ abstract class AbstractNativeCompileTask extends DefaultTask {
     @InputFiles
     FileCollection source
 
+    /**
+     * Returns the headers to be precompiled
+     */
+    @InputFiles
+    FileCollection precompiledHeaders
+
     // Invalidate output when the tool chain output changes
     @Input
     def getOutputType() {
@@ -96,16 +102,17 @@ abstract class AbstractNativeCompileTask extends DefaultTask {
         incrementalCompilerBuilder = new IncrementalCompilerBuilder(cacheRepository, this)
         includes = project.files()
         source = project.files()
+        precompiledHeaders = project.files()
     }
 
     @TaskAction
     void compile(IncrementalTaskInputs inputs) {
-
         def spec = createCompileSpec()
         spec.tempDir = getTemporaryDir()
         spec.objectFileDir = getObjectFileDir()
         spec.include getIncludes()
         spec.source getSource()
+        spec.precompiledHeaders getPrecompiledHeaders()
         spec.macros = getMacros()
         spec.args getCompilerArgs()
         spec.positionIndependentCode = isPositionIndependentCode()
@@ -146,5 +153,13 @@ abstract class AbstractNativeCompileTask extends DefaultTask {
      */
     void source(Object sourceFiles) {
         source.from sourceFiles
+    }
+
+    /**
+     * Adds a set of headers to be precompiled.
+     * The provided headers object is evaluated as per {@link org.gradle.api.Project#files(Object...)}.
+     */
+    void precompiledHeaders (Object headers) {
+        precompiledHeaders.from headers
     }
 }

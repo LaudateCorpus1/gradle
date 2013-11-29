@@ -37,7 +37,6 @@ public class CreateNativeBinaries extends ModelRule {
         BuildTypeContainer buildTypes = project.getExtensions().getByType(BuildTypeContainer.class);
         ExecutableContainer executables = project.getExtensions().getByType(ExecutableContainer.class);
         LibraryContainer libraries = project.getExtensions().getByType(LibraryContainer.class);
-        PrecompiledHeaderContainer precompiledHeaders = project.getExtensions().getByType(PrecompiledHeaderContainer.class);
 
         NativeBinaryFactory factory = new NativeBinaryFactory(instantiator, project, toolChains, targetPlatforms, buildTypes);
         for (ToolChain toolChain : toolChains) {
@@ -52,11 +51,6 @@ public class CreateNativeBinaries extends ModelRule {
                     for (Executable executable : executables) {
                         for (Flavor flavor : executable.getFlavors()) {
                             binaries.add(factory.createNativeBinary(DefaultExecutableBinary.class, executable, toolChain, targetPlatform, buildType, flavor));
-                        }
-                    }
-                    for (PrecompiledHeader precompiledHeader: precompiledHeaders) {
-                        for (Flavor flavor : precompiledHeader.getFlavors()) {
-                            binaries.add(factory.createNativeBinary(DefaultPrecompiledHeaderBinary.class, precompiledHeader, toolChain, targetPlatform, buildType, flavor));
                         }
                     }
                 }

@@ -16,6 +16,7 @@
 package org.gradle.language.cpp;
 
 import org.gradle.api.Incubating;
+import org.gradle.language.PrecompiledHeaderSourceSet;
 import org.gradle.language.base.LanguageSourceSet;
 import org.gradle.language.DependentSourceSet;
 import org.gradle.language.HeaderExportingSourceSet;
@@ -39,11 +40,15 @@ import org.gradle.language.HeaderExportingSourceSet;
  *             exportedHeaders {
  *                 srcDirs "src/main/include", "src/shared/include"
  *             }
+ *             precompiledHeaders {
+ *                 srcDirs "src/main/precompiledHeaders"
+ *                 include "*.h"
+ *             }
  *         }
  *     }
  * }
  * </pre>
  */
 @Incubating
-public interface CppSourceSet extends HeaderExportingSourceSet, LanguageSourceSet, DependentSourceSet {
+public interface CppSourceSet extends PrecompiledHeaderSourceSet, HeaderExportingSourceSet, LanguageSourceSet, DependentSourceSet {
 }

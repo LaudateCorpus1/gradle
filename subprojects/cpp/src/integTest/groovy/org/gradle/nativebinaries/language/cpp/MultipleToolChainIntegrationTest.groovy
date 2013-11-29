@@ -97,7 +97,7 @@ class MultipleToolChainIntegrationTest extends AbstractIntegrationSpec {
         fails "mainExecutable"
 
         and:
-        failure.assertHasDescription("Execution failed for task ':compileMainExecutableMainCpp'.")
+        failure.assertHasDescription("Execution failed for task ':precompileHeaderMainExecutableMainCpp'.")
         failure.assertHasCause("Tool chain bad is not available")
     }
 

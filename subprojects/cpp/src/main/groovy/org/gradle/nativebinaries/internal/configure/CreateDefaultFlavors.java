@@ -27,7 +27,6 @@ public class CreateDefaultFlavors implements Action<ProjectInternal> {
     public void execute(ProjectInternal project) {
         configureDefaultFlavor(project.getExtensions().getByType(ExecutableContainer.class));
         configureDefaultFlavor(project.getExtensions().getByType(LibraryContainer.class));
-        configureDefaultFlavor(project.getExtensions().getByType(PrecompiledHeaderContainer.class));
     }
 
     private void configureDefaultFlavor(Set<? extends NativeComponent> components) {

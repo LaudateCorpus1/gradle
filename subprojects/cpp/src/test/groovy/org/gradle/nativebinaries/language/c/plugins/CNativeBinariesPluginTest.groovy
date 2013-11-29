@@ -19,10 +19,10 @@ import org.gradle.language.base.FunctionalSourceSet
 import org.gradle.language.c.CSourceSet
 import org.gradle.nativebinaries.ExecutableBinary
 import org.gradle.nativebinaries.NativeBinary
-import org.gradle.nativebinaries.PrecompiledHeaderBinary
 import org.gradle.nativebinaries.SharedLibraryBinary
 import org.gradle.nativebinaries.StaticLibraryBinary
 import org.gradle.nativebinaries.language.c.tasks.CCompile
+import org.gradle.nativebinaries.language.c.tasks.CPrecompileHeader
 import org.gradle.util.Matchers
 import org.gradle.util.TestUtil
 import spock.lang.Specification
@@ -40,15 +40,12 @@ class CNativeBinariesPluginTest extends Specification {
             libraries {
                 lib {}
             }
-            precompiledHeaders {
-                header {}
-            }
         }
 
         then:
         def sourceSets = project.sources
-        sourceSets.size() == 3
-        sourceSets*.name == ["exe", "header", "lib"]
+        sourceSets.size() == 2
+        sourceSets*.name == ["exe", "lib"]
 
         and:
         sourceSets.exe instanceof FunctionalSourceSet
@@ -63,13 +60,6 @@ class CNativeBinariesPluginTest extends Specification {
         sourceSets.lib.c.source.srcDirs == [project.file("src/lib/c")] as Set
         sourceSets.lib.c.exportedHeaders.srcDirs == [project.file("src/lib/headers")] as Set
         project.libraries.lib.source == [sourceSets.lib.c] as Set
-
-        and:
-        sourceSets.header instanceof FunctionalSourceSet
-        sourceSets.header.c instanceof CSourceSet
-        sourceSets.header.c.source.srcDirs == [project.file("src/header/c")] as Set
-        sourceSets.header.c.exportedHeaders.srcDirs == [project.file("src/header/headers")] as Set
-        project.precompiledHeaders.header.source == [sourceSets.header.c] as Set
     }
 
     def "can configure source set locations"() {
@@ -85,6 +75,9 @@ class CNativeBinariesPluginTest extends Specification {
                         exportedHeaders {
                             srcDirs "h1", "h2"
                         }
+                        precompiledHeaders {
+                            srcDirs "ph1", "ph2"
+                        }
                     }
                 }
                 lib {
@@ -94,6 +87,9 @@ class CNativeBinariesPluginTest extends Specification {
                         }
                         exportedHeaders {
                             srcDirs "h3"
+                        }
+                        precompiledHeaders {
+                            srcDirs "ph3"
                         }
                     }
                 }
@@ -105,11 +101,13 @@ class CNativeBinariesPluginTest extends Specification {
         with (sourceSets.exe.c) {
             source.srcDirs*.name == ["d1", "d2"]
             exportedHeaders.srcDirs*.name == ["h1", "h2"]
+            precompiledHeaders.srcDirs*.name == ["ph1", "ph2"]
         }
 
         with (sourceSets.lib.c) {
             source.srcDirs*.name == ["d3"]
             exportedHeaders.srcDirs*.name == ["h3"]
+            precompiledHeaders.srcDirs*.name == ["ph3"]
         }
     }
 
@@ -136,12 +134,14 @@ class CNativeBinariesPluginTest extends Specification {
         then:
         ExecutableBinary binary = project.binaries.testExecutable
         binary.tasks.withType(CCompile)*.name == ["compileTestExecutableTestAnotherOne", "compileTestExecutableTestC"]
+        binary.tasks.withType(CPrecompileHeader)*.name == ["precompileHeaderTestExecutableTestAnotherOne", "precompileHeaderTestExecutableTestC"]
 
         and:
         binary.tasks.withType(CCompile).each { compile ->
             compile.toolChain == binary.toolChain
             compile.macros == [NDEBUG:null, LEVEL:"1"]
             compile.compilerArgs == ["ARG1", "ARG2"]
+            compile.taskDependencies.grep{ it instanceof CPrecompileHeader }.size() == 1
         }
 
         and:
@@ -182,6 +182,7 @@ class CNativeBinariesPluginTest extends Specification {
             compile.toolChain == sharedLib.toolChain
             compile.macros == [NDEBUG:null, LEVEL:"1"]
             compile.compilerArgs == ["ARG1", "ARG2", "SHARED1", "SHARED2"]
+            compile.taskDependencies.grep{ it instanceof CPrecompileHeader }.size() == 1
         }
         def sharedLinkTask = sharedLib.tasks.link
         sharedLinkTask Matchers.dependsOn("compileTestSharedLibraryTestAnotherOne", "compileTestSharedLibraryTestC")
@@ -193,45 +194,10 @@ class CNativeBinariesPluginTest extends Specification {
             compile.toolChain == sharedLib.toolChain
             compile.macros == [NDEBUG:null, LEVEL:"1"]
             compile.compilerArgs == ["ARG1", "ARG2", "STATIC1", "STATIC2"]
+            compile.taskDependencies.grep{ it instanceof CPrecompileHeader }.size() == 1
         }
         def staticLibTask = staticLib.tasks.createStaticLib
         staticLibTask Matchers.dependsOn("compileTestStaticLibraryTestAnotherOne", "compileTestStaticLibraryTestC")
-    }
-
-    def "creates compile tasks for each precompiled header source set"() {
-        when:
-        dsl {
-            apply plugin: CNativeBinariesPlugin
-            sources {
-                test {
-                    anotherOne(CSourceSet) {}
-                }
-            }
-            precompiledHeaders {
-                test {
-                    binaries.all { NativeBinary binary ->
-                        binary.cCompiler.define "NDEBUG"
-                        binary.cCompiler.define "LEVEL", "1"
-                        binary.cCompiler.args "ARG1", "ARG2"
-                    }
-                }
-            }
-        }
-
-        then:
-        PrecompiledHeaderBinary binary = project.binaries.testPrecompiledHeader
-        binary.tasks.withType(CCompile)*.name == ["compileTestPrecompiledHeaderTestAnotherOne", "compileTestPrecompiledHeaderTestC"]
-
-        and:
-        binary.tasks.withType(CCompile).each { compile ->
-            compile.toolChain == binary.toolChain
-            compile.macros == [NDEBUG:null, LEVEL:"1"]
-            compile.compilerArgs == ["ARG1", "ARG2"]
-        }
-
-        and:
-        def linkTask = binary.tasks.link
-        linkTask == null
     }
 
     def dsl(Closure closure) {

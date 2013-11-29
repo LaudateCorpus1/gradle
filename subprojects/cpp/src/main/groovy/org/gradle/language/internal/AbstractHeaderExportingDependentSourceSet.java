@@ -21,6 +21,7 @@ import org.gradle.api.internal.file.DefaultSourceDirectorySet;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.language.DependentSourceSet;
 import org.gradle.language.HeaderExportingSourceSet;
+import org.gradle.language.PrecompiledHeaderSourceSet;
 import org.gradle.language.base.FunctionalSourceSet;
 import org.gradle.language.base.LanguageSourceSet;
 import org.gradle.language.base.internal.AbstractLanguageSourceSet;
@@ -34,9 +35,10 @@ import java.util.Map;
  * A convenience base class for implementing language source sets with dependencies and exported headers.
  */
 public abstract class AbstractHeaderExportingDependentSourceSet extends AbstractLanguageSourceSet
-        implements HeaderExportingSourceSet, LanguageSourceSet, DependentSourceSet {
+        implements PrecompiledHeaderSourceSet, HeaderExportingSourceSet, LanguageSourceSet, DependentSourceSet {
 
     private final DefaultSourceDirectorySet exportedHeaders;
+    private final SourceDirectorySet precompiledHeaders;
     private final List<Object> libs = new ArrayList<Object>();
     private final ConfigurationBasedNativeDependencySet configurationDependencySet;
 
@@ -44,6 +46,7 @@ public abstract class AbstractHeaderExportingDependentSourceSet extends Abstract
         super(name, parent, typeName, source);
 
         this.exportedHeaders = new DefaultSourceDirectorySet("exported headers", project.getFileResolver());
+        this.precompiledHeaders = new DefaultSourceDirectorySet("precompiledHeaders", project.getFileResolver());
         this.configurationDependencySet = new ConfigurationBasedNativeDependencySet(project, getFullName());
 
         libs.add(configurationDependencySet);
@@ -55,6 +58,14 @@ public abstract class AbstractHeaderExportingDependentSourceSet extends Abstract
 
     public void exportedHeaders(Action<? super SourceDirectorySet> config) {
         config.execute(getExportedHeaders());
+    }
+
+    public SourceDirectorySet getPrecompiledHeaders() {
+        return precompiledHeaders;
+    }
+
+    public void precompiledHeaders(Action<? super SourceDirectorySet> config) {
+        config.execute(getPrecompiledHeaders());
     }
 
     public Collection<?> getLibs() {

@@ -91,21 +91,6 @@ class NativeBinariesPluginTest extends Specification {
         staticLibTask Matchers.dependsOn("createTestStaticLibrary")
     }
 
-    def "does not create link tasks for precompiled header"() {
-        when:
-        project.precompiledHeaders.create "test"
-        project.evaluate()
-
-        then:
-        def testHeader = project.binaries.testPrecompiledHeader
-        println project.tasks
-
-        testHeader.tasks.createStaticLib == null
-
-        and:
-        testHeader.tasks.link == null
-    }
-
     def "attaches existing functional source set with same name to component"() {
         def languageSourceSet = Stub(LanguageSourceSet) {
             getName() >> "languageSourceSet"

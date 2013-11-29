@@ -251,6 +251,6 @@ class CppBinariesIntegrationTest extends AbstractInstalledToolChainIntegrationSp
         succeeds "mainExecutable"
 
         then:
-        executedTasks.tail() == [":compileMainExecutableMainCpp", ":mainExecutablePreLink", ":linkMainExecutable", ":mainExecutablePostLink", ":mainExecutable"]
+        executedTasks.tail() == [":precompileHeaderMainExecutableMainCpp", ":compileMainExecutableMainCpp", ":mainExecutablePreLink", ":linkMainExecutable", ":mainExecutablePostLink", ":mainExecutable"]
     }
 }

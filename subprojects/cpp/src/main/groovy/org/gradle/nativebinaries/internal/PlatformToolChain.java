@@ -27,6 +27,10 @@ public interface PlatformToolChain {
 
     <T extends BinaryToolSpec> Compiler<T> createWindowsResourceCompiler();
 
+    <T extends BinaryToolSpec> Compiler<T> createCppHeaderPrecompiler();
+
+    <T extends BinaryToolSpec> Compiler<T> createCHeaderPrecompiler();
+
     <T extends LinkerSpec> Compiler<T> createLinker();
 
     <T extends StaticLibraryArchiverSpec> Compiler<T> createStaticLibraryArchiver();

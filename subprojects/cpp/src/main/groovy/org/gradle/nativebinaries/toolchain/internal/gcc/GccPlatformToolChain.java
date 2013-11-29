@@ -69,6 +69,20 @@ class GccPlatformToolChain implements PlatformToolChain {
         throw new UnsupportedOperationException();
     }
 
+    public <T extends BinaryToolSpec> org.gradle.api.internal.tasks.compile.Compiler<T> createCppHeaderPrecompiler() {
+        CommandLineTool<CppCompileSpec> commandLineTool = commandLineTool(ToolType.CPP_COMPILER);
+        commandLineTool.withSpecTransformer(withSystemArgs(CppCompileSpec.class, platformConfiguration.getCppCompilerArgs()));
+        CppHeaderPrecompiler cppCompiler = new CppHeaderPrecompiler(commandLineTool, tools.getArgTransformer(ToolType.CPP_COMPILER), useCommandFile);
+        return (Compiler<T>) new OutputCleaningCompiler<CppCompileSpec>(cppCompiler, ".gch");
+    }
+
+    public <T extends BinaryToolSpec> org.gradle.api.internal.tasks.compile.Compiler<T> createCHeaderPrecompiler() {
+        CommandLineTool<CCompileSpec> commandLineTool = commandLineTool(ToolType.C_COMPILER);
+        commandLineTool.withSpecTransformer(withSystemArgs(CCompileSpec.class, platformConfiguration.getCCompilerArgs()));
+        CHeaderPrecompiler cCompiler = new CHeaderPrecompiler(commandLineTool, tools.getArgTransformer(ToolType.C_COMPILER), useCommandFile);
+        return (Compiler<T>) new OutputCleaningCompiler<CCompileSpec>(cCompiler, ".gch");
+    }
+
     public <T extends LinkerSpec> Compiler<T> createLinker() {
         CommandLineTool<LinkerSpec> commandLineTool = commandLineTool(ToolType.LINKER);
         commandLineTool.withSpecTransformer(withSystemArgs(LinkerSpec.class, platformConfiguration.getLinkerArgs()));

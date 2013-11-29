@@ -107,11 +107,6 @@ public class NativeBinariesModelPlugin implements Plugin<Project> {
                 instantiator,
                 fileResolver
         );
-        project.getExtensions().create(
-                "precompiledHeaders",
-                DefaultPrecompiledHeaderContainer.class,
-                instantiator
-        );
 
         // TODO:DAZ Lazy configuration actions: need a better way to accomplish these.
         configurationActions.add(Actions.composite(

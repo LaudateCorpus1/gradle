@@ -43,6 +43,12 @@ public interface NativeCompileSpec extends BinaryToolSpec {
 
     void source(Iterable<File> sources);
 
+    List<File> getPrecompiledHeaders();
+
+    void setPrecompiledHeaders(Collection<File> precompiledHeaders);
+
+    void precompiledHeaders(Iterable<File> precompiledHeaders);
+
     List<File> getRemovedSourceFiles();
 
     void setRemovedSourceFiles(Collection<File> sources);

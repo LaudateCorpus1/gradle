@@ -179,6 +179,16 @@ public class VisualCppToolChain extends AbstractToolChain implements VisualCpp {
             return (Compiler<T>) new OutputCleaningCompiler<WindowsResourceCompileSpec>(windowsResourceCompiler, ".res");
         }
 
+        @Override
+        public <T extends BinaryToolSpec> Compiler<T> createCppHeaderPrecompiler() {
+            return null; // TODO
+        }
+
+        @Override
+        public <T extends BinaryToolSpec> Compiler<T> createCHeaderPrecompiler() {
+            return null; // TODO
+        }
+
         public <T extends LinkerSpec> Compiler<T> createLinker() {
             CommandLineTool<LinkerSpec> commandLineTool = commandLineTool("Linker", install.getLinker(targetPlatform));
             commandLineTool.withSpecTransformer(addLibraryPath());

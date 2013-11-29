@@ -27,6 +27,7 @@ public abstract class AbstractNativeCompileSpec extends AbstractBinaryToolSpec i
     private List<File> includeRoots = new ArrayList<File>();
     private List<File> sourceFiles = new ArrayList<File>();
     private List<File> removedSourceFiles = new ArrayList<File>();
+    private List<File> precompiledHeaders = new ArrayList<File>();
     private Map<String, String> macros = new LinkedHashMap<String, String>();
     private File objectFileDir;
     private boolean positionIndependentCode;
@@ -54,6 +55,19 @@ public abstract class AbstractNativeCompileSpec extends AbstractBinaryToolSpec i
     public void setSourceFiles(Collection<File> sources) {
         sourceFiles.clear();
         sourceFiles.addAll(sources);
+    }
+
+    public List<File> getPrecompiledHeaders() {
+        return precompiledHeaders;
+    }
+
+    public void setPrecompiledHeaders(Collection<File> precompiledHeaders) {
+        this.precompiledHeaders.clear();
+        addAll(this.precompiledHeaders, precompiledHeaders);
+    }
+
+    public void precompiledHeaders(Iterable<File> precompiledHeaders) {
+        addAll(this.precompiledHeaders, precompiledHeaders);
     }
 
     public List<File> getRemovedSourceFiles() {

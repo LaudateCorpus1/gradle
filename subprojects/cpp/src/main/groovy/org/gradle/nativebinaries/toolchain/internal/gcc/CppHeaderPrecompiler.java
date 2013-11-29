@@ -18,10 +18,15 @@ package org.gradle.nativebinaries.toolchain.internal.gcc;
 
 import org.gradle.api.Action;
 import org.gradle.api.tasks.WorkResult;
+import org.gradle.internal.os.OperatingSystem;
 import org.gradle.nativebinaries.language.cpp.internal.CppCompileSpec;
 import org.gradle.nativebinaries.toolchain.internal.ArgsTransformer;
 import org.gradle.nativebinaries.toolchain.internal.CommandLineTool;
+import org.gradle.nativebinaries.toolchain.internal.MacroArgsConverter;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class CppHeaderPrecompiler extends CppCompiler {
@@ -41,6 +46,33 @@ public class CppHeaderPrecompiler extends CppCompiler {
     }
 
     private static class CppHeaderPrecompileArgsTransformer extends GccCompilerArgsTransformer<CppCompileSpec> {
+        @Override
+        public List<String> transform(CppCompileSpec spec) {
+            List<String> args = new ArrayList<String>();
+            Collections.addAll(args, "-x", getLanguage());
+
+            for (String macroArg : new MacroArgsConverter().transform(spec.getMacros())) {
+                args.add("-D" + macroArg);
+            }
+
+            args.addAll(spec.getAllArgs());
+            args.add("-c");
+            if (spec.isPositionIndependentCode()) {
+                if (!OperatingSystem.current().isWindows()) {
+                    args.add("-fPIC");
+                }
+            }
+
+            for (File file : spec.getIncludeRoots()) {
+                args.add("-I");
+                args.add(file.getAbsolutePath());
+            }
+            for (File file : spec.getPrecompiledHeaders()) {
+                args.add(file.getAbsolutePath());
+            }
+            return args;
+        }
+
         protected String getLanguage() {
             return "c++-header";
         }

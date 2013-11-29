@@ -150,7 +150,7 @@ class BinaryPlatformIntegrationTest extends AbstractInstalledToolChainIntegratio
         fails "mainExecutable"
 
         then:
-        failure.assertHasDescription("Execution failed for task ':compileMainExecutableMainCpp'.")
+        failure.assertHasDescription("Execution failed for task ':precompileHeaderMainExecutableMainCpp'.")
         failure.assertHasCause("Tool chain ${toolChain.id} cannot build for platform: arm")
     }
 
@@ -168,7 +168,7 @@ class BinaryPlatformIntegrationTest extends AbstractInstalledToolChainIntegratio
         fails "mainExecutable"
 
         then:
-        failure.assertHasDescription("Execution failed for task ':compileMainExecutableMainCpp'.")
+        failure.assertHasDescription("Execution failed for task ':precompileHeaderMainExecutableMainCpp'.")
         failure.assertHasCause("Tool chain ${toolChain.id} cannot build for platform: solaris")
     }
 
