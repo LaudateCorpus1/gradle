@@ -91,6 +91,10 @@ class CppNativeBinariesPlugin implements Plugin<ProjectInternal> {
             description = "Precompiles header for $sourceSet of $binary"
         }
 
+        // Ugly, but this needs the toolchain, and must happen before dependencies are resolved (i.e. before createCompiler)
+        compileTask.outputs.files sourceSet.precompiledHeaders.collect{ binary.toolChain.getPrecompiledHeaderName(it.absolutePath) }
+        compileTask.getOutputs().upToDateWhen{ t -> !t.outputs.files.any { !it.exists () }}
+
         compileTask.toolChain = binary.toolChain
         compileTask.targetPlatform = binary.targetPlatform
         compileTask.positionIndependentCode = binary instanceof SharedLibraryBinary // TODO: Review this
