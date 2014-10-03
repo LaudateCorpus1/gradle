@@ -18,12 +18,12 @@ package org.gradle.internal.reflect;
 
 import org.gradle.api.Transformer;
 import org.gradle.api.specs.Spec;
+import org.gradle.internal.Factory;
 import org.gradle.internal.UncheckedException;
 import org.gradle.util.CollectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Inherited;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -54,7 +54,7 @@ public class JavaReflectionUtil {
      *
      * @throws NoSuchPropertyException when the given property does not exist.
      */
-    public static PropertyAccessor readableProperty(Class<?> target, String property) {
+    public static PropertyAccessor readableProperty(Class<?> target, String property) throws NoSuchPropertyException {
         final Method getterMethod = findGetterMethod(target, property);
         if (getterMethod == null) {
             throw new NoSuchPropertyException(String.format("Could not find getter method for property '%s' on class %s.", property, target.getSimpleName()));
@@ -68,7 +68,7 @@ public class JavaReflectionUtil {
             if (isGetter(getterMethod)) {
                 return getterMethod;
             }
-        } catch (NoSuchMethodException e) {
+        } catch (java.lang.NoSuchMethodException e) {
             // Ignore
         }
         try {
@@ -76,7 +76,7 @@ public class JavaReflectionUtil {
             if (isBooleanGetter(getterMethod)) {
                 return getterMethod;
             }
-        } catch (NoSuchMethodException e2) {
+        } catch (java.lang.NoSuchMethodException e2) {
             // Ignore
         }
         return null;
@@ -96,7 +96,7 @@ public class JavaReflectionUtil {
      *
      * @throws NoSuchPropertyException when the given property does not exist.
      */
-    public static PropertyMutator writeableProperty(Class<?> target, String property) {
+    public static PropertyMutator writeableProperty(Class<?> target, String property) throws NoSuchPropertyException {
         String setterName = toMethodName("set", property);
         for (final Method method : target.getMethods()) {
             if (!method.getName().equals(setterName)) {
@@ -111,38 +111,6 @@ public class JavaReflectionUtil {
             return new MethodBackedPropertyMutator(property, method);
         }
         throw new NoSuchPropertyException(String.format("Could not find setter method for property '%s' on class %s.", property, target.getSimpleName()));
-    }
-
-    public static <T> T readField(Object target, Class<T> type, String name) {
-        Class<?> objectType = target.getClass();
-        while (objectType != null) {
-            try {
-                Field field = objectType.getDeclaredField(name);
-                if (type.isAssignableFrom(field.getType())) {
-                    field.setAccessible(true);
-                    Object value;
-                    try {
-                        value = field.get(target);
-                    } catch (IllegalAccessException e) {
-                        throw UncheckedException.throwAsUncheckedException(e);
-                    }
-
-                    if (type.isPrimitive()) {
-                        @SuppressWarnings("unchecked")
-                        T cast = (T) getWrapperTypeForPrimitiveType(type).cast(value);
-                        return cast;
-                    } else {
-                        return type.cast(value);
-                    }
-                }
-            } catch (NoSuchFieldException ignore) {
-                // ignore
-            }
-
-            objectType = objectType.getSuperclass();
-        }
-
-        throw UncheckedException.throwAsUncheckedException(new NoSuchFieldException("Could not find field '" + name + "' with type '" + type.getClass() + "' on class '" + target.getClass() + "'"));
     }
 
     private static String toMethodName(String prefix, String propertyName) {
@@ -168,21 +136,33 @@ public class JavaReflectionUtil {
         throw new IllegalArgumentException(String.format("Don't know how wrapper type for primitive type %s.", type));
     }
 
-    public static <T, R> JavaMethod<T, R> method(Class<T> target, Class<R> returnType, String name, Class<?>... paramTypes) {
+    /**
+     * Locates the given method. Searches all methods, including private methods.
+     */
+    public static <T, R> JavaMethod<T, R> method(Class<T> target, Class<R> returnType, String name, Class<?>... paramTypes) throws NoSuchMethodException {
         return new JavaMethod<T, R>(target, returnType, name, paramTypes);
     }
 
-    public static <T, R> JavaMethod<T, R> method(T target, Class<R> returnType, String name, Class<?>... paramTypes) {
+    /**
+     * Locates the given method. Searches all methods, including private methods.
+     */
+    public static <T, R> JavaMethod<T, R> method(T target, Class<R> returnType, String name, Class<?>... paramTypes) throws NoSuchMethodException {
         @SuppressWarnings("unchecked")
         Class<T> targetClass = (Class<T>) target.getClass();
         return method(targetClass, returnType, name, paramTypes);
     }
 
-    public static <T, R> JavaMethod<T, R> method(Class<T> target, Class<R> returnType, Method method) {
+    /**
+     * Locates the given method. Searches all methods, including private methods.
+     */
+    public static <T, R> JavaMethod<T, R> method(Class<T> target, Class<R> returnType, Method method) throws NoSuchMethodException {
         return new JavaMethod<T, R>(target, returnType, method);
     }
 
-    public static <T, R> JavaMethod<T, R> method(T target, Class<R> returnType, Method method) {
+    /**
+     * Locates the given method. Searches all methods, including private methods.
+     */
+    public static <T, R> JavaMethod<T, R> method(T target, Class<R> returnType, Method method) throws NoSuchMethodException {
         @SuppressWarnings("unchecked")
         Class<T> targetClass = (Class<T>) target.getClass();
         return new JavaMethod<T, R>(targetClass, returnType, method);
@@ -204,6 +184,10 @@ public class JavaReflectionUtil {
     public static Method findMethod(Class<?> target, Spec<Method> predicate) {
         List<Method> methods = findAllMethodsInternal(target, predicate, new MultiMap<String, Method>(), new ArrayList<Method>(1), true);
         return methods.isEmpty() ? null : methods.get(0);
+    }
+
+    public static List<Method> findAllMethods(Class<?> target, Spec<Method> predicate) {
+        return findAllMethodsInternal(target, predicate, new MultiMap<String, Method>(), new ArrayList<Method>(), false);
     }
 
     // Not hasProperty() because that's awkward with Groovy objects implementing it
@@ -304,6 +288,10 @@ public class JavaReflectionUtil {
         }
     }
 
+    public static <T> Factory<T> factory(final Instantiator instantiator, final Class<? extends T> type, final Object... args) {
+        return new InstantiatingFactory<T>(instantiator, type, args);
+    }
+
     private static class GetterMethodBackedPropertyAccessor implements PropertyAccessor {
         private final String property;
         private final Method method;
@@ -367,6 +355,22 @@ public class JavaReflectionUtil {
             } catch (Exception e) {
                 throw UncheckedException.throwAsUncheckedException(e);
             }
+        }
+    }
+
+    private static class InstantiatingFactory<T> implements Factory<T> {
+        private final Instantiator instantiator;
+        private final Class<? extends T> type;
+        private final Object[] args;
+
+        public InstantiatingFactory(Instantiator instantiator, Class<? extends T> type, Object... args) {
+            this.instantiator = instantiator;
+            this.type = type;
+            this.args = args;
+        }
+
+        public T create() {
+            return instantiator.newInstance(type, args);
         }
     }
 }

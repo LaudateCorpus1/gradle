@@ -17,7 +17,7 @@
 package org.gradle.testing.junit
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
-import org.gradle.integtests.fixtures.JUnitXmlTestExecutionResult
+import org.gradle.integtests.fixtures.DefaultTestExecutionResult
 import org.gradle.integtests.fixtures.TestResources
 import org.gradle.integtests.fixtures.executer.ExecutionResult
 import org.gradle.util.TextUtil
@@ -76,8 +76,7 @@ org.gradle.JUnit4StandardOutputTest > printTest STANDARD_OUT
         """)
     }
 
-    @Test
-    void "test logging is included in XML results"() {
+    def "test logging is included in XML results"() {
         file("build.gradle") << """
             apply plugin: 'java'
                 repositories { mavenCentral() }
@@ -104,7 +103,7 @@ public class EncodingTest {
         executer.withTasks("test").runWithFailure()
 
         then:
-        new JUnitXmlTestExecutionResult(testDirectory)
+        new DefaultTestExecutionResult(testDirectory)
                 .testClass("EncodingTest")
                 .assertTestPassed("encodesCdata")
                 .assertTestFailed("encodesAttributeValues", equalTo('java.lang.RuntimeException: html: <> cdata: ]]>'))

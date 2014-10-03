@@ -16,22 +16,28 @@
 
 package org.gradle.api.internal.tasks.options;
 
-import org.gradle.api.GradleException;
+import org.apache.commons.lang.StringUtils;
+import org.gradle.internal.typeconversion.ValueAwareNotationParser;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 
-public class FieldOptionElement extends AbstractOptionElement{
+public class FieldOptionElement extends AbstractOptionElement {
+
+    public static FieldOptionElement create(Option option, Field field, OptionNotationParserFactory optionNotationParserFactory){
+        String optionName = calOptionName(option, field);
+        Class<?> optionType = calculateOptionType(field.getType());
+        ValueAwareNotationParser<?> notationParser = createNotationParserOrFail(optionNotationParserFactory, optionName, optionType, field.getDeclaringClass());
+        return new FieldOptionElement(field, optionName, option, optionType, notationParser);
+    }
 
     private final Field field;
-    private List<String> availableValues;
-    private Class<?> optionType;
 
-    public FieldOptionElement(Option option, Field field) {
-        super(calOptionName(option, field), option, field.getDeclaringClass());
-        assertFieldSupported(field);
+    public FieldOptionElement(Field field, String optionName, Option option, Class<?> optionType, ValueAwareNotationParser<?> notationParser) {
+        super(optionName, option, optionType, field.getDeclaringClass(), notationParser);
         this.field = field;
-        this.optionType = calculateOptionType(field.getType());
+        getSetter();
     }
 
     private static String calOptionName(Option option, Field field) {
@@ -42,18 +48,14 @@ public class FieldOptionElement extends AbstractOptionElement{
         }
     }
 
-    private void assertFieldSupported(Field field) {
-        final Class<?> type = field.getType();
-        if (!(type == Boolean.class || type == Boolean.TYPE)
-                && !type.isAssignableFrom(String.class)
-                && !type.isEnum()) {
-            throw new OptionValidationException(String.format("Option '%s' cannot be casted to type '%s' in class '%s'.",
-                    getOptionName(), type.getName(), field.getDeclaringClass().getName()));
+    private Method getSetter() {
+        try{
+            String setterName = "set" + StringUtils.capitalize(field.getName());
+            return field.getDeclaringClass().getMethod(setterName, field.getType());
+        } catch (NoSuchMethodException e) {
+            throw new OptionValidationException(String.format("No setter for Option annotated field '%s' in class '%s'.",
+                    getElementName(), getDeclaredClass()));
         }
-    }
-
-    public Class<?> getOptionType() {
-        return optionType;
     }
 
     public String getElementName() {
@@ -64,33 +66,20 @@ public class FieldOptionElement extends AbstractOptionElement{
         return field.getDeclaringClass();
     }
 
-    public List<String> getAvailableValues() {
-        //calculate list lazy to avoid overhead upfront
-        if (availableValues == null) {
-            availableValues = calculdateAvailableValues(field.getType());
-        }
-        return availableValues;
-    }
-
-
     public void apply(Object object, List<String> parameterValues) {
-        if (optionType == Void.TYPE && parameterValues.size() == 0) {
+        if (getOptionType() == Void.TYPE && parameterValues.size() == 0) {
             setFieldValue(object, true);
         } else if (parameterValues.size() > 1) {
             throw new IllegalArgumentException(String.format("Lists not supported for option"));
         } else {
-            Object arg = getParameterObject(parameterValues.get(0));
+            Object arg = getNotationParser().parseNotation(parameterValues.get(0));
             setFieldValue(object, arg);
         }
     }
 
     private void setFieldValue(Object object, Object value) {
-        field.setAccessible(true);
-        try {
-            field.set(object, value);
-        } catch (IllegalAccessException e) {
-            throw new GradleException(String.format("Cannot apply option value %s on field %s of object %s", value, field.getName(), object));
-        }
+            Method setter = getSetter();
+            invokeMethod(object, setter, value);
     }
 }
 

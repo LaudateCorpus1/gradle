@@ -16,8 +16,8 @@
 
 package org.gradle.api.tasks.diagnostics.internal.graph.nodes;
 
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
-import org.gradle.api.artifacts.component.ModuleComponentSelector;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
@@ -32,19 +32,18 @@ public class RenderableDependencyResult extends AbstractRenderableDependencyResu
         this.dependency = dependency;
     }
 
-    @Override
     public boolean isResolvable() {
         return true;
     }
 
     @Override
-    protected ModuleComponentIdentifier getActual() {
-        return (ModuleComponentIdentifier)dependency.getSelected().getId();
+    protected ComponentIdentifier getActual() {
+        return dependency.getSelected().getId();
     }
 
     @Override
-    protected ModuleComponentSelector getRequested() {
-        return (ModuleComponentSelector)dependency.getRequested();
+    protected ComponentSelector getRequested() {
+        return dependency.getRequested();
     }
 
     public Set<RenderableDependency> getChildren() {

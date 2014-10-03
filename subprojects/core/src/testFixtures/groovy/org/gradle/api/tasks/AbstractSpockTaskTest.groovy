@@ -21,7 +21,7 @@ import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.internal.AbstractTask
-import org.gradle.api.internal.Actions
+import org.gradle.internal.Actions
 import org.gradle.api.internal.AsmBackedClassGenerator
 import org.gradle.api.internal.project.AbstractProject
 import org.gradle.api.internal.project.DefaultProject
@@ -35,7 +35,6 @@ import org.gradle.api.specs.Spec
 import org.gradle.internal.reflect.DirectInstantiator
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.gradle.util.GUtil
-import org.gradle.util.Matchers
 import org.gradle.util.TestUtil
 import org.junit.Rule
 import spock.lang.Specification
@@ -113,20 +112,20 @@ public abstract class AbstractSpockTaskTest extends Specification {
     def testDependsOn() {
         Task dependsOnTask = createTask(project, "somename");
         Task task = createTask(project, TEST_TASK_NAME);
-        project.getTasks().add("path1");
-        project.getTasks().add("path2");
+        project.getTasks().create("path1");
+        project.getTasks().create("path2");
 
         when:
         task.dependsOn(Project.PATH_SEPARATOR + "path1");
 
         then:
-        Matchers.dependsOn("path1").matches(task)
+        TaskDependencyMatchers.dependsOn("path1").matches(task)
 
         when:
         task.dependsOn("path2", dependsOnTask);
 
         then:
-        Matchers.dependsOn("path1", "path2", "somename").matches(task)
+        TaskDependencyMatchers.dependsOn("path1", "path2", "somename").matches(task)
     }
 
     def testToString() {
@@ -143,6 +142,18 @@ public abstract class AbstractSpockTaskTest extends Specification {
         then:
         getTask().is( getTask().deleteAllActions())
         new ArrayList() ==  getTask().getActions()
+    }
+
+    def testSetActions() {
+        when:
+        Action action1 = Actions.doNothing();
+        getTask().actions = [action1]
+
+        Action action2 = Actions.doNothing();
+        getTask().actions = [action2]
+
+        then:
+        [new AbstractTask.TaskActionWrapper(action2)] ==  getTask().actions
     }
 
     def testAddActionWithNull() {

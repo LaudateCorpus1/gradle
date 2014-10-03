@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-package org.gradle.integtests;
+package org.gradle.integtests
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.executer.GradleContextualExecuter
 import org.gradle.test.fixtures.server.http.BlockingHttpServer
 import org.junit.Rule
+import spock.lang.IgnoreIf
 
+@IgnoreIf({GradleContextualExecuter.parallel}) // no point, always runs in parallel
 public class ParallelProjectExecutionIntegrationTest extends AbstractIntegrationSpec {
 
     @Rule public final BlockingHttpServer blockingServer = new BlockingHttpServer()
@@ -43,7 +46,7 @@ allprojects {
     }
 }
 """
-        executer.withArgument('--parallel')
+        executer.withArgument('--parallel-threads=3') // needs to be set to the maximum number of expectConcurrentExecution() calls
         executer.withArgument('--info')
     }
 
@@ -99,6 +102,19 @@ allprojects {
         blockingServer.expectConcurrentExecution(':b:pingC')
 
         run 'b:pingC'
+    }
+
+    void 'tasks with should run after ordering rules are preferred when running over an idle worker thread'() {
+        buildFile << """
+            tasks.getByPath(':a:pingA').shouldRunAfter(':b:pingB')
+            tasks.getByPath(':b:pingB').dependsOn(':b:pingA')
+        """
+
+        expect:
+        blockingServer.expectConcurrentExecution(':a:pingA', ':b:pingA')
+        blockingServer.expectConcurrentExecution(':b:pingB')
+
+        run 'a:pingA', 'b:pingB'
     }
 
     def projectDependency(def link) {

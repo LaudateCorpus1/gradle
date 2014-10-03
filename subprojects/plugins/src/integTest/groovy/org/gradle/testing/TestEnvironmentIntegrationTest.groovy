@@ -17,29 +17,33 @@
 package org.gradle.testing
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
-import org.gradle.integtests.fixtures.JUnitXmlTestExecutionResult
+import org.gradle.integtests.fixtures.DefaultTestExecutionResult
 import org.gradle.integtests.fixtures.TestResources
+import org.gradle.util.Requires
+import org.gradle.util.TestPrecondition
 import org.junit.Rule
 
 class TestEnvironmentIntegrationTest extends AbstractIntegrationSpec {
     @Rule public final TestResources resources = new TestResources(temporaryFolder)
 
+    @Requires(TestPrecondition.NOT_JDK_IBM)
     def canRunTestsWithCustomSystemClassLoader() {
         when:
         run 'test'
 
         then:
-        def result = new JUnitXmlTestExecutionResult(testDirectory)
+        def result = new DefaultTestExecutionResult(testDirectory)
         result.assertTestClassesExecuted('org.gradle.JUnitTest')
         result.testClass('org.gradle.JUnitTest').assertTestPassed('mySystemClassLoaderIsUsed')
     }
 
+    @Requires(TestPrecondition.NOT_JDK_IBM)
     def canRunTestsWithCustomSystemClassLoaderAndJavaAgent() {
         when:
         run 'test'
 
         then:
-        def result = new JUnitXmlTestExecutionResult(testDirectory)
+        def result = new DefaultTestExecutionResult(testDirectory)
         result.assertTestClassesExecuted('org.gradle.JUnitTest')
         result.testClass('org.gradle.JUnitTest').assertTestPassed('mySystemClassLoaderIsUsed')
     }
@@ -49,17 +53,18 @@ class TestEnvironmentIntegrationTest extends AbstractIntegrationSpec {
         run 'test'
 
         then:
-        def result = new JUnitXmlTestExecutionResult(testDirectory)
+        def result = new DefaultTestExecutionResult(testDirectory)
         result.assertTestClassesExecuted('org.gradle.JUnitTest')
         result.testClass('org.gradle.JUnitTest').assertTestPassed('mySecurityManagerIsUsed')
     }
 
+    @Requires(TestPrecondition.JDK7_OR_EARLIER)
     def canRunTestsWithJMockitLoadedWithJavaAgent() {
         when:
         run 'test'
 
         then:
-        def result = new JUnitXmlTestExecutionResult(testDirectory)
+        def result = new DefaultTestExecutionResult(testDirectory)
         result.assertTestClassesExecuted('org.gradle.JMockitTest')
         result.testClass('org.gradle.JMockitTest').assertTestPassed('testOk')
     }

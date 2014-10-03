@@ -16,12 +16,14 @@
 
 package org.gradle.api.internal.tasks.options;
 
+import org.gradle.internal.typeconversion.TypeConversionException;
+
 import java.util.List;
 
 public interface OptionElement {
     Class<?> getDeclaredClass();
 
-    List getAvailableValues();
+    List<String> getAvailableValues();
 
     Class<?> getOptionType();
 
@@ -29,7 +31,10 @@ public interface OptionElement {
 
     String getOptionName();
 
-    void apply(Object object, List<String> parameterValues);
+    /**
+     * @throws TypeConversionException On failure to convert the supplied values to the appropriate target types.
+     */
+    void apply(Object object, List<String> parameterValues) throws TypeConversionException;
 
     String getDescription();
 }

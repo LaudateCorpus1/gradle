@@ -16,18 +16,18 @@
 package org.gradle.api.plugins.scala
 
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.internal.artifacts.configurations.Configurations
 import org.gradle.api.plugins.JavaBasePlugin
 import org.gradle.api.reporting.ReportingExtension
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.scala.ScalaCompile
 import org.gradle.api.tasks.scala.ScalaDoc
-import org.gradle.api.artifacts.Configuration
 import org.gradle.util.TestUtil
 import org.junit.Before
 import org.junit.Test
 
-import static org.gradle.util.Matchers.dependsOn
+import static org.gradle.api.tasks.TaskDependencyMatchers.dependsOn
 import static org.gradle.util.Matchers.isEmpty
 import static org.gradle.util.WrapUtil.toLinkedSet
 import static org.gradle.util.WrapUtil.toSet
@@ -44,13 +44,6 @@ public class ScalaBasePluginTest {
 
     @Test void appliesTheJavaPluginToTheProject() {
         assertTrue(project.getPlugins().hasPlugin(JavaBasePlugin))
-    }
-
-    @Test void addsScalaToolsConfigurationToTheProject() {
-        def configuration = project.configurations.getByName(ScalaBasePlugin.SCALA_TOOLS_CONFIGURATION_NAME)
-        assertThat(Configurations.getNames(configuration.extendsFrom, false), equalTo(toSet()))
-        assertFalse(configuration.visible)
-        assertTrue(configuration.transitive)
     }
 
     @Test void addsZincConfigurationToTheProject() {

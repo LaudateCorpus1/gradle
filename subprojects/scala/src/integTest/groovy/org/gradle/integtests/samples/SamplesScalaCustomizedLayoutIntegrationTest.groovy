@@ -17,7 +17,8 @@
 package org.gradle.integtests.samples
 
 import org.gradle.integtests.fixtures.AbstractIntegrationTest
-import org.gradle.integtests.fixtures.JUnitXmlTestExecutionResult
+import org.gradle.integtests.fixtures.DefaultTestExecutionResult
+import org.gradle.integtests.fixtures.ForkScalaCompileInDaemonModeFixture
 import org.gradle.integtests.fixtures.Sample
 import org.gradle.test.fixtures.file.TestFile
 import org.junit.Rule
@@ -26,6 +27,7 @@ import org.junit.Test
 class SamplesScalaCustomizedLayoutIntegrationTest extends AbstractIntegrationTest {
 
     @Rule public final Sample sample = new Sample(testDirectoryProvider, 'scala/customizedLayout')
+    @Rule public final ForkScalaCompileInDaemonModeFixture forkScalaCompileInDaemonModeFixture = new ForkScalaCompileInDaemonModeFixture(executer, testDirectoryProvider)
 
     @Test
     public void canBuildJar() {
@@ -35,7 +37,7 @@ class SamplesScalaCustomizedLayoutIntegrationTest extends AbstractIntegrationTes
         executer.inDirectory(projectDir).withTasks('clean', 'build').run()
 
         // Check tests have run
-        JUnitXmlTestExecutionResult result = new JUnitXmlTestExecutionResult(projectDir)
+        def result = new DefaultTestExecutionResult(projectDir)
         result.assertTestClassesExecuted('org.gradle.sample.impl.PersonImplTest')
 
         // Check contents of Jar

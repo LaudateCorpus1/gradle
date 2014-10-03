@@ -27,10 +27,10 @@ import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
 import org.gradle.api.artifacts.maven.MavenPom;
 import org.gradle.api.internal.ClosureBackedAction;
-import org.gradle.api.internal.ErroringAction;
-import org.gradle.api.internal.IoActions;
+import org.gradle.internal.ErroringAction;
+import org.gradle.internal.IoActions;
 import org.gradle.api.internal.file.FileResolver;
-import org.gradle.api.internal.xml.XmlTransformer;
+import org.gradle.internal.xml.XmlTransformer;
 import org.gradle.listener.ActionBroadcast;
 
 import java.io.BufferedWriter;

@@ -17,8 +17,10 @@
 package org.gradle.integtests.samples
 
 import org.gradle.integtests.fixtures.AbstractIntegrationTest
-import org.gradle.integtests.fixtures.JUnitXmlTestExecutionResult
+import org.gradle.integtests.fixtures.DefaultTestExecutionResult
+import org.gradle.integtests.fixtures.ForkScalaCompileInDaemonModeFixture
 import org.gradle.integtests.fixtures.Sample
+import org.gradle.integtests.fixtures.executer.GradleContextualExecuter
 import org.gradle.test.fixtures.file.TestFile
 import org.junit.Before
 import org.junit.Rule
@@ -29,6 +31,7 @@ import static org.hamcrest.Matchers.containsString
 class SamplesScalaQuickstartIntegrationTest extends AbstractIntegrationTest {
 
     @Rule public final Sample sample = new Sample(testDirectoryProvider, 'scala/quickstart')
+    @Rule public final ForkScalaCompileInDaemonModeFixture forkScalaCompileInDaemonModeFixture = new ForkScalaCompileInDaemonModeFixture(executer, testDirectoryProvider)
 
     private TestFile projectDir
 
@@ -43,7 +46,7 @@ class SamplesScalaQuickstartIntegrationTest extends AbstractIntegrationTest {
         executer.inDirectory(projectDir).withTasks('clean', 'build').run()
 
         // Check tests have run
-        JUnitXmlTestExecutionResult result = new JUnitXmlTestExecutionResult(projectDir)
+        def result = new DefaultTestExecutionResult(projectDir)
         result.assertTestClassesExecuted('org.gradle.sample.impl.PersonImplTest')
 
         // Check contents of Jar
@@ -58,6 +61,11 @@ class SamplesScalaQuickstartIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     public void canBuildScalaDoc() {
+        if (GradleContextualExecuter.isDaemon()) {
+            // don't load scala into the daemon as it exhausts permgen
+            return
+        }
+
         executer.inDirectory(projectDir).withTasks('clean', 'scaladoc').run()
 
         projectDir.file('build/docs/scaladoc/index.html').assertExists()

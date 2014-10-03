@@ -32,7 +32,7 @@ import org.gradle.internal.typeconversion.NotationParser;
 import org.gradle.api.publish.internal.ProjectDependencyPublicationResolver;
 import org.gradle.api.publish.ivy.IvyArtifact;
 import org.gradle.api.publish.ivy.IvyConfigurationContainer;
-import org.gradle.api.publish.ivy.IvyModuleDescriptor;
+import org.gradle.api.publish.ivy.IvyModuleDescriptorSpec;
 import org.gradle.api.publish.ivy.internal.artifact.DefaultIvyArtifactSet;
 import org.gradle.api.publish.ivy.internal.dependency.DefaultIvyDependency;
 import org.gradle.api.publish.ivy.internal.dependency.DefaultIvyDependencySet;
@@ -47,30 +47,33 @@ import java.util.Set;
 public class DefaultIvyPublication implements IvyPublicationInternal {
 
     private final String name;
-    private final IvyModuleDescriptorInternal descriptor;
+    private final IvyModuleDescriptorSpecInternal descriptor;
     private final IvyPublicationIdentity publicationIdentity;
     private final IvyConfigurationContainer configurations;
     private final DefaultIvyArtifactSet ivyArtifacts;
     private final DefaultIvyDependencySet ivyDependencies;
+    private final ProjectDependencyPublicationResolver projectDependencyResolver;
     private FileCollection descriptorFile;
     private SoftwareComponentInternal component;
 
     public DefaultIvyPublication(
-            String name, Instantiator instantiator, IvyPublicationIdentity publicationIdentity, NotationParser<IvyArtifact> ivyArtifactNotationParser
+            String name, Instantiator instantiator, IvyPublicationIdentity publicationIdentity, NotationParser<Object, IvyArtifact> ivyArtifactNotationParser,
+            ProjectDependencyPublicationResolver projectDependencyResolver
     ) {
         this.name = name;
         this.publicationIdentity = publicationIdentity;
+        this.projectDependencyResolver = projectDependencyResolver;
         configurations = instantiator.newInstance(DefaultIvyConfigurationContainer.class, instantiator);
         ivyArtifacts = instantiator.newInstance(DefaultIvyArtifactSet.class, name, ivyArtifactNotationParser);
         ivyDependencies = instantiator.newInstance(DefaultIvyDependencySet.class);
-        descriptor = instantiator.newInstance(DefaultIvyModuleDescriptor.class, this);
+        descriptor = instantiator.newInstance(DefaultIvyModuleDescriptorSpec.class, this);
     }
 
     public String getName() {
         return name;
     }
 
-    public IvyModuleDescriptorInternal getDescriptor() {
+    public IvyModuleDescriptorSpecInternal getDescriptor() {
         return descriptor;
     }
 
@@ -78,7 +81,7 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
         this.descriptorFile = descriptorFile;
     }
 
-    public void descriptor(Action<? super IvyModuleDescriptor> configure) {
+    public void descriptor(Action<? super IvyModuleDescriptorSpec> configure) {
         configure.execute(descriptor);
     }
 
@@ -112,7 +115,7 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
     }
 
     private void addProjectDependency(ProjectDependency dependency, String confMapping) {
-        ModuleVersionIdentifier identifier = new ProjectDependencyPublicationResolver().resolve(dependency);
+        ModuleVersionIdentifier identifier = projectDependencyResolver.resolve(dependency);
         ivyDependencies.add(new DefaultIvyDependency(identifier.getGroup(), identifier.getName(), identifier.getVersion(), confMapping));
     }
 

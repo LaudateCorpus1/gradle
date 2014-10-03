@@ -14,46 +14,45 @@
  * limitations under the License.
  */
 package org.gradle.api.plugins
+
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.jvm.ClassDirectoryBinarySpec
 import org.gradle.api.reporting.ReportingExtension
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.TaskDependencyMatchers
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.api.tasks.testing.Test
-import org.gradle.internal.reflect.Instantiator
-import org.gradle.language.jvm.ClassDirectoryBinary
-import org.gradle.util.Matchers
 import org.gradle.util.SetSystemProperties
 import org.gradle.util.TestUtil
 import org.junit.Rule
 import spock.lang.Specification
 
-import static org.gradle.util.Matchers.sameCollection
+import static org.gradle.api.file.FileCollectionMatchers.sameCollection
 import static org.gradle.util.WrapUtil.toLinkedSet
 
 class JavaBasePluginTest extends Specification {
     @Rule
     public SetSystemProperties sysProperties = new SetSystemProperties()
     private final Project project = TestUtil.createRootProject()
-    private final JavaBasePlugin javaBasePlugin = new JavaBasePlugin(project.services.get(Instantiator))
 
     void appliesBasePluginsAndAddsConventionObject() {
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
 
         then:
         project.plugins.hasPlugin(ReportingBasePlugin)
         project.plugins.hasPlugin(BasePlugin)
-        project.plugins.hasPlugin(JavaLanguagePlugin)
+        project.plugins.hasPlugin(LegacyJavaComponentPlugin)
         project.convention.plugins.java instanceof JavaPluginConvention
     }
 
     void createsTasksAndAppliesMappingsForNewSourceSet() {
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
         project.sourceSets.create('custom')
         
         then:
@@ -63,9 +62,9 @@ class JavaBasePluginTest extends Specification {
         set.output.classesDir == new File(project.buildDir, 'classes/custom')
 
         def processResources = project.tasks['processCustomResources']
-        processResources.description == "Processes resources 'custom:resources'."
+        processResources.description == "Processes JVM resources 'custom:resources'."
         processResources instanceof Copy
-        Matchers.dependsOn().matches(processResources)
+        TaskDependencyMatchers.dependsOn().matches(processResources)
         processResources.destinationDir == project.sourceSets.custom.output.resourcesDir
         def resources = processResources.source
         resources sameCollection(project.sourceSets.custom.resources)
@@ -73,7 +72,7 @@ class JavaBasePluginTest extends Specification {
         def compileJava = project.tasks['compileCustomJava']
         compileJava.description == "Compiles Java source 'custom:java'."
         compileJava instanceof JavaCompile
-        Matchers.dependsOn().matches(compileJava)
+        TaskDependencyMatchers.dependsOn().matches(compileJava)
         compileJava.classpath.is(project.sourceSets.custom.compileClasspath)
         compileJava.destinationDir == project.sourceSets.custom.output.classesDir
 
@@ -83,13 +82,13 @@ class JavaBasePluginTest extends Specification {
         def classes = project.tasks['customClasses']
         classes.description == "Assembles classes 'custom'."
         classes instanceof DefaultTask
-        Matchers.dependsOn('processCustomResources', 'compileCustomJava').matches(classes)
-        Matchers.builtBy('customClasses').matches(project.sourceSets.custom.output)
+        TaskDependencyMatchers.dependsOn('processCustomResources', 'compileCustomJava').matches(classes)
+        TaskDependencyMatchers.builtBy('customClasses').matches(project.sourceSets.custom.output)
     }
 
     void "wires generated resources task into classes task for sourceset"() {
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
         project.sourceSets.create('custom')
 
         and:
@@ -98,7 +97,7 @@ class JavaBasePluginTest extends Specification {
 
         then:
         def customClasses = project.tasks['customClasses']
-        Matchers.dependsOn('someTask', 'processCustomResources', 'compileCustomJava').matches(customClasses)
+        TaskDependencyMatchers.dependsOn('someTask', 'processCustomResources', 'compileCustomJava').matches(customClasses)
     }
 
     void tasksReflectChangesToSourceSetConfiguration() {
@@ -106,7 +105,7 @@ class JavaBasePluginTest extends Specification {
         def resourcesDir = project.file('target/resources')
 
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
         project.sourceSets.create('custom')
         project.sourceSets.custom.output.classesDir = classesDir
         project.sourceSets.custom.output.resourcesDir = resourcesDir
@@ -121,7 +120,7 @@ class JavaBasePluginTest extends Specification {
 
     void createsConfigurationsForNewSourceSet() {
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
         def sourceSet = project.sourceSets.create('custom')
 
         then:
@@ -147,7 +146,7 @@ class JavaBasePluginTest extends Specification {
 
     void appliesMappingsToTasksDefinedByBuildScript() {
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
 
         then:
         def compile = project.task('customCompile', type: JavaCompile)
@@ -155,61 +154,43 @@ class JavaBasePluginTest extends Specification {
 
         def test = project.task('customTest', type: Test.class)
         test.workingDir == project.projectDir
-        test.testResultsDir == project.testResultsDir
-        test.testReportDir == project.testReportDir
-        test.testReport //by default (JUnit), the report is 'on'
+        test.reports.junitXml.destination == project.testResultsDir
+        test.reports.html.destination == project.testReportDir
+        test.reports.junitXml.enabled
+        test.reports.html.enabled
 
         def javadoc = project.task('customJavadoc', type: Javadoc)
         javadoc.destinationDir == project.file("$project.docsDir/javadoc")
         javadoc.title == project.extensions.getByType(ReportingExtension).apiDocTitle
     }
 
-    void "configures test task for testNG"() {
-        given:
-        javaBasePlugin.apply(project)
-        def test = project.task('customTest', type: Test.class)
-
-        when:
-        test.useTestNG()
-
-        then:
-        assert test.testReport
-
-        when:
-        test.testReport = false
-        test.useTestNG()
-
-        then:
-        assert !test.testReport
-    }
-
     void appliesMappingsToCustomJarTasks() {
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
         def task = project.task('customJar', type: Jar)
 
         then:
-        Matchers.dependsOn().matches(task)
+        TaskDependencyMatchers.dependsOn().matches(task)
         task.destinationDir == project.libsDir
     }
 
     void createsLifecycleBuildTasks() {
         when:
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
 
         then:
         def build = project.tasks[JavaBasePlugin.BUILD_TASK_NAME]
-        Matchers.dependsOn(JavaBasePlugin.CHECK_TASK_NAME, BasePlugin.ASSEMBLE_TASK_NAME).matches(build)
+        TaskDependencyMatchers.dependsOn(JavaBasePlugin.CHECK_TASK_NAME, BasePlugin.ASSEMBLE_TASK_NAME).matches(build)
 
         def buildDependent = project.tasks[JavaBasePlugin.BUILD_DEPENDENTS_TASK_NAME]
-        Matchers.dependsOn(JavaBasePlugin.BUILD_TASK_NAME).matches(buildDependent)
+        TaskDependencyMatchers.dependsOn(JavaBasePlugin.BUILD_TASK_NAME).matches(buildDependent)
 
         def buildNeeded = project.tasks[JavaBasePlugin.BUILD_NEEDED_TASK_NAME]
-        Matchers.dependsOn(JavaBasePlugin.BUILD_TASK_NAME).matches(buildNeeded)
+        TaskDependencyMatchers.dependsOn(JavaBasePlugin.BUILD_TASK_NAME).matches(buildNeeded)
     }
 
     def configuresTestTaskWhenDebugSystemPropertyIsSet() {
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
         def task = project.tasks.create('test', Test.class)
 
         when:
@@ -221,7 +202,7 @@ class JavaBasePluginTest extends Specification {
     }
 
     def "configures test task when test.single is used"() {
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
         def task = project.tasks.create('test', Test.class)
         task.include 'ignoreme'
 
@@ -235,7 +216,7 @@ class JavaBasePluginTest extends Specification {
     }
 
     def "adds functional and language source sets for each source set added to the 'sourceSets' container"() {
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
 
         when:
         project.sourceSets {
@@ -267,7 +248,7 @@ class JavaBasePluginTest extends Specification {
     }
 
     def "adds a class directory binary for each source set added to the 'sourceSets' container"() {
-        javaBasePlugin.apply(project)
+        project.plugins.apply(JavaBasePlugin)
 
         when:
         project.sourceSets {
@@ -279,7 +260,7 @@ class JavaBasePluginTest extends Specification {
 
         then:
         def binary = project.binaries.findByName("customClasses")
-        binary instanceof ClassDirectoryBinary
+        binary instanceof ClassDirectoryBinarySpec
         binary.classesDir == project.file("classes")
         binary.resourcesDir == project.file("resources")
         binary.source as Set == [project.sources.custom.java, project.sources.custom.resources] as Set

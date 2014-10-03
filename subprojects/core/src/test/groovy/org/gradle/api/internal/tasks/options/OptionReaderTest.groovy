@@ -69,23 +69,31 @@ class OptionReaderTest extends Specification {
         reader.getOptions(new TestClass2())
         then:
         def e = thrown(OptionValidationException)
-        e.message == "Option 'stringValue' linked to multiple elements in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass2'."
+        e.message == "@Option 'stringValue' linked to multiple elements in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass2'."
     }
 
-    def "ignores static methods and fields"() {
+    def "fails on static methods"() {
         when:
-        List<InstanceOptionDescriptor> options = reader.getOptions(new TestClass3())
+        reader.getOptions(new TestClass31())
         then:
-        options.isEmpty()
+        def e = thrown(OptionValidationException)
+        e.message == "@Option on static method 'setStaticString' not supported in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass31'."
     }
 
+    def "fails on static fields"() {
+        when:
+        reader.getOptions(new TestClass32())
+        then:
+        def e = thrown(OptionValidationException)
+        e.message == "@Option on static field 'staticField' not supported in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass32'."
+    }
 
     def "fail when parameter cannot be converted from the command-line"() {
         when:
         reader.getOptions(new TestClass5())
         then:
         def e = thrown(OptionValidationException)
-        e.message == "Option 'fileValue' cannot be casted to parameter type 'java.io.File' in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass5'."
+        e.message == "Option 'fileValue' cannot be casted to type 'java.io.File' in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass5'."
     }
 
     def "fails when method has > 1 parameter"() {
@@ -143,6 +151,27 @@ class OptionReaderTest extends Specification {
         e.message == "No option name set on 'setStrings' in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass9'."
     }
 
+    def "throws decent error when private field is annotated as option and no setter declared"() {
+        when:
+        reader.getOptions(new TestClass10())
+        then:
+        def e = thrown(OptionValidationException)
+        e.message == "No setter for Option annotated field 'field' in class 'class org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass10'."
+    }
+
+    def "throws decent error for invalid OptionValues annotated methods"() {
+        when:
+        reader.getOptions(new WithInvalidSomeOptionMethod());
+        then:
+        def e = thrown(OptionValidationException)
+        e.message == "@OptionValues annotation not supported on method 'getValues' in class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$WithInvalidSomeOptionMethod'. Supported method must be non-static, return a Collection<String> and take no parameters.";
+
+        when:
+        reader.getOptions(new TestClass8());
+        then:
+        e = thrown(OptionValidationException)
+        e.message == "No description set on option 'field' at for class 'org.gradle.api.internal.tasks.options.OptionReaderTest\$TestClass8'."
+    }
 
     public static class TestClass1{
         @Option(option = "stringValue", description = "string value")
@@ -189,10 +218,13 @@ class OptionReaderTest extends Specification {
         }
     }
 
-    public static class TestClass3{
+    public static class TestClass31{
         @Option(option = "staticString", description = "string value")
         public static void setStaticString(String value) {
         }
+    }
+
+    public static class TestClass32{
         @Option(description = "staticOption")
         static String staticField
     }
@@ -222,6 +254,7 @@ class OptionReaderTest extends Specification {
         @Option(description = "Descr Field4")
         boolean field4
 
+
         @OptionValues("field2")
         List<String> getField2Options() {
             return Arrays.asList("dynValue1", "dynValue2")
@@ -243,6 +276,35 @@ class OptionReaderTest extends Specification {
         @Option(description = "some description")
         public void setStrings(String value) {
         }
+    }
+
+    public static class TestClass10{
+        @Option(description = "some description")
+        private String field
+    }
+
+    public static class WithInvalidSomeOptionMethod {
+        @OptionValues("someOption")
+        List<String> getValues(String someParam) { return Arrays.asList("something")}
+    }
+
+    public static class WithDuplicateSomeOptions {
+        @OptionValues("someOption")
+        List<String> getValues() { return Arrays.asList("something")}
+
+        @OptionValues("someOption")
+        List<String> getValues2() { return Arrays.asList("somethingElse")}
+    }
+
+    public static class WithAnnotatedStaticMethod {
+        @OptionValues("someOption")
+        static List<String> getValues(String someParam) { return Arrays.asList("something")}
+    }
+
+
+    public class SomeOptionValues{
+        @OptionValues("someOption")
+        List<String> getValues() { return Arrays.asList("something")}
     }
 
     enum TestEnum {

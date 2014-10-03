@@ -16,7 +16,7 @@
 
 package org.gradle.api.tasks.diagnostics.internal.graph.nodes;
 
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 
 import java.util.Set;
@@ -29,13 +29,12 @@ public abstract class AbstractRenderableModuleResult implements RenderableDepend
         this.module = module;
     }
 
-    public ModuleComponentIdentifier getId() {
-        return (ModuleComponentIdentifier)module.getId();
+    public ComponentIdentifier getId() {
+        return module.getId();
     }
 
     public String getName() {
-        ModuleComponentIdentifier id = (ModuleComponentIdentifier)module.getId();
-        return id.getGroup() + ":" + id.getName() + ":" + id.getVersion();
+        return getId().getDisplayName();
     }
 
     public String getDescription() {

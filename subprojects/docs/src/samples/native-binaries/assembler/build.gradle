@@ -19,21 +19,10 @@ apply plugin: 'assembler'
 // END SNIPPET apply-plugin
 apply plugin: 'c'
 
-targetPlatforms {
-    x86 {
-        architecture "i386"
-    }
-}
-
-sources {
-    i386_masm {
-        asm {
-            source.srcDir "src/main/asm_i386_masm"
-        }
-    }
-    i386_gcc {
-        asm {
-            source.srcDir "src/main/asm_i386_gcc"
+model {
+    platforms {
+        x86 {
+            architecture "i386"
         }
     }
 }
@@ -53,6 +42,19 @@ executables {
 // START SNIPPET assembler-args
                 assembler.args "-g"
             }
+        }
+    }
+}
+
+sources {
+    i386_masm {
+        asm(AssemblerSourceSet) {
+            source.srcDir "src/main/asm_i386_masm"
+        }
+    }
+    i386_gcc {
+        asm(AssemblerSourceSet) {
+            source.srcDir "src/main/asm_i386_gcc"
         }
     }
 }

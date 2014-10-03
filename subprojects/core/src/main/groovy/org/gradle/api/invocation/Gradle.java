@@ -22,7 +22,7 @@ import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.ProjectEvaluationListener;
 import org.gradle.api.execution.TaskExecutionGraph;
-import org.gradle.api.internal.HasInternalProtocol;
+import org.gradle.internal.HasInternalProtocol;
 import org.gradle.api.plugins.PluginAware;
 
 import java.io.File;
@@ -44,7 +44,7 @@ public interface Gradle extends PluginAware {
     /**
      * Returns the Gradle user home directory.
      *
-     * This directory is used to cache downloaded resources.
+     * This directory is used to cache downloaded resources, compiled build scripts and so on.
      *
      * @return The user home directory. Never returns null.
      */

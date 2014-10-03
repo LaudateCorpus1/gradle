@@ -16,20 +16,37 @@
 
 package org.gradle.api.internal.tasks.options;
 
-import org.gradle.api.internal.coerce.EnumFromStringNotationParser;
+import org.gradle.internal.reflect.JavaMethod;
+import org.gradle.internal.reflect.JavaReflectionUtil;
 import org.gradle.internal.typeconversion.NotationParser;
+import org.gradle.internal.typeconversion.ValueAwareNotationParser;
 
 import java.lang.annotation.IncompleteAnnotationException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 abstract class AbstractOptionElement implements OptionElement {
     private final String optionName;
     private final String description;
+    private final Class<?> optionType;
+    private final ValueAwareNotationParser<?> notationParser;
 
-    public AbstractOptionElement(String optionName, Option option, Class<?> declaringClass) {
+    public AbstractOptionElement(String optionName, Option option, Class<?> optionType, Class<?> declaringClass, ValueAwareNotationParser<?> notationParser) {
         this.description = readDescription(option, optionName, declaringClass);
         this.optionName = optionName;
+        this.optionType = optionType;
+        this.notationParser = notationParser;
+    }
+
+    public List<String> getAvailableValues() {
+        List<String> describes = new ArrayList<String>();
+        notationParser.describeValues(describes);
+        return describes;
+    }
+
+    public Class<?> getOptionType() {
+        return optionType;
     }
 
     private String readDescription(Option option, String optionName, Class<?> declaringClass) {
@@ -40,32 +57,9 @@ abstract class AbstractOptionElement implements OptionElement {
         }
     }
 
-    protected Object getParameterObject(String value) {
-        if (getOptionType().isEnum()) {
-            NotationParser parser = new EnumFromStringNotationParser(getOptionType());
-            return parser.parseNotation(value);
-        }
-        return value;
-    }
-
-    protected Class<?> calculateOptionType(Class<?> type) {
-        //we don't want to support "--flag true" syntax
-        if (type == Boolean.class || type == Boolean.TYPE) {
-            return Void.TYPE;
-        } else {
-            return type;
-        }
-    }
-
-    protected List<String> calculdateAvailableValues(Class<?> type) {
-        List<String> availableValues = new ArrayList<String>();
-        if (type.isEnum()) {
-            final Enum[] enumConstants = (Enum[]) type.getEnumConstants();
-            for (Enum enumConstant : enumConstants) {
-                availableValues.add(enumConstant.name());
-            }
-        }
-        return availableValues;
+    protected Object invokeMethod(Object object, Method method, Object... parameterValues) {
+        final JavaMethod<Object, Object> javaMethod = JavaReflectionUtil.method(Object.class, Object.class, method);
+        return javaMethod.invoke(object, parameterValues);
     }
 
     public String getOptionName() {
@@ -75,4 +69,28 @@ abstract class AbstractOptionElement implements OptionElement {
     public String getDescription() {
         return description;
     }
+
+    protected NotationParser<CharSequence, ?> getNotationParser() {
+        return notationParser;
+    }
+
+    protected static ValueAwareNotationParser<Object> createNotationParserOrFail(OptionNotationParserFactory optionNotationParserFactory, String optionName, Class<?> optionType, Class<?> declaringClass) {
+        try {
+            return optionNotationParserFactory.toComposite(optionType);
+        } catch (OptionValidationException ex) {
+            throw new OptionValidationException(String.format("Option '%s' cannot be casted to type '%s' in class '%s'.",
+                    optionName, optionType.getName(), declaringClass.getName()));
+        }
+    }
+
+    protected static Class<?> calculateOptionType(Class<?> type) {
+        //we don't want to support "--flag true" syntax
+        if (type == Boolean.class || type == Boolean.TYPE) {
+            return Void.TYPE;
+        } else {
+            return type;
+        }
+    }
+
+
 }

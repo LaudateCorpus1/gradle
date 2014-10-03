@@ -16,6 +16,8 @@
 
 package org.gradle.api.internal.tasks.options;
 
+import org.gradle.internal.typeconversion.TypeConversionException;
+
 import java.util.List;
 
 public interface OptionDescriptor extends Comparable<OptionDescriptor> {
@@ -28,8 +30,9 @@ public interface OptionDescriptor extends Comparable<OptionDescriptor> {
 
     String getDescription();
 
-    public OptionElement getOptionElement();
-
-    void apply(Object object, List<String> values);
+    /**
+     * @throws TypeConversionException On failure to convert the given values to the required types.
+     */
+    void apply(Object object, List<String> values) throws TypeConversionException;
 }
 

@@ -18,6 +18,7 @@ package org.gradle.api.tasks
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.hamcrest.Matchers
+import spock.lang.Unroll
 
 class TaskRemovalIntegrationTest extends AbstractIntegrationSpec {
 
@@ -37,4 +38,59 @@ class TaskRemovalIntegrationTest extends AbstractIntegrationSpec {
         failure.assertThatDescription(Matchers.startsWith("Task 'foo' not found in root project"))
     }
 
+    def "can remove task in after evaluate"() {
+        given:
+        buildScript """
+            task foo {}
+            afterEvaluate {
+                tasks.remove(foo)
+            }
+        """
+
+        when:
+        fails "foo"
+
+        then:
+        failure.assertThatDescription(Matchers.startsWith("Task 'foo' not found in root project"))
+    }
+
+    @Unroll
+    def "cant remove task in after evaluate if task is used by a #annotationClass"() {
+        given:
+        buildScript """
+            import org.gradle.model.*
+
+            task foo {}
+            task bar {}
+
+            afterEvaluate {
+                tasks.remove(foo)
+            }
+
+            class MyPlugin implements Plugin<Project> {
+                void apply(Project project) {
+
+                }
+
+                @RuleSource
+                static class Rules {
+                    @$annotationClass
+                    void linkFooToBar(@Path("tasks.bar") Task bar, @Path("tasks.foo") Task foo) {
+                       // do nothing
+                    }
+                }
+            }
+
+            apply plugin: MyPlugin
+        """
+
+        when:
+        fails "foo"
+
+        then:
+        failure.assertThatCause(Matchers.startsWith("Tried to remove model tasks.foo but it is depended on by other model elements"))
+
+        where:
+        annotationClass << ["Mutate", "Finalize"]
+    }
 }

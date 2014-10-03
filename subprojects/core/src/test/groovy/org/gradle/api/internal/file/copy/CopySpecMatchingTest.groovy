@@ -20,14 +20,14 @@ import org.gradle.api.Action
 import org.gradle.api.file.FileCopyDetails
 import org.gradle.api.file.FileTree
 import org.gradle.api.file.RelativePath
-import org.gradle.api.internal.Actions
+import org.gradle.internal.Actions
 import org.gradle.api.internal.file.TestFiles
 import org.gradle.internal.reflect.DirectInstantiator
 import spock.lang.Specification
 
 class CopySpecMatchingTest extends Specification {
 
-    DefaultCopySpec copySpec = new DefaultCopySpec(TestFiles.resolver(), new DirectInstantiator(), null)
+    DefaultCopySpec copySpec = new DefaultCopySpec(TestFiles.resolver(), new DirectInstantiator())
 
     FileTree fileTree = Mock()
 
@@ -37,14 +37,14 @@ class CopySpecMatchingTest extends Specification {
         FileCopyDetails details1 = Mock()
         FileCopyDetails details2 = Mock()
 
-        details1.relativePath >>  RelativePath.parse(true, 'path/abc.txt')
-        details2.relativePath >> RelativePath.parse(true, 'path/bcd.txt')
+        details1.relativeSourcePath >>  RelativePath.parse(true, 'path/abc.txt')
+        details2.relativeSourcePath >> RelativePath.parse(true, 'path/bcd.txt')
 
         Action matchingAction = Mock()
 
         when:
         copySpec.filesMatching("**/a*", matchingAction)
-        copySpec.allCopyActions.each { copyAction ->
+        copySpec.copyActions.each { copyAction ->
             copyAction.execute(details1)
             copyAction.execute(details2)
         }
@@ -60,14 +60,14 @@ class CopySpecMatchingTest extends Specification {
         FileCopyDetails details1 = Mock()
         FileCopyDetails details2 = Mock()
 
-        details1.relativePath >>  RelativePath.parse(true, 'path/abc.txt')
-        details2.relativePath >> RelativePath.parse(true, 'path/bcd.txt')
+        details1.relativeSourcePath >>  RelativePath.parse(true, 'path/abc.txt')
+        details2.relativeSourcePath >> RelativePath.parse(true, 'path/bcd.txt')
 
         Action matchingAction = Mock()
 
         when:
         copySpec.filesNotMatching("**/a*", matchingAction)
-        copySpec.allCopyActions.each { copyAction ->
+        copySpec.copyActions.each { copyAction ->
             copyAction.execute(details1)
             copyAction.execute(details2)
         }
@@ -78,11 +78,12 @@ class CopySpecMatchingTest extends Specification {
 
     def matchingSpecInherited() {
         given:
-        DefaultCopySpec childSpec = copySpec.addChild()
+        DefaultCopySpec childSpec = new DefaultCopySpec(TestFiles.resolver(), new DirectInstantiator())
+        CopySpecResolver childResolver = childSpec.buildResolverRelativeToParent(copySpec.buildRootResolver())
         when:
         copySpec.filesMatching("**/*.java", Actions.doNothing())
         then:
-        1 == childSpec.allCopyActions.size()
-        childSpec.allCopyActions[0] instanceof MatchingCopyAction
+        1 == childResolver.allCopyActions.size()
+        childResolver.allCopyActions[0] instanceof MatchingCopyAction
     }
 }

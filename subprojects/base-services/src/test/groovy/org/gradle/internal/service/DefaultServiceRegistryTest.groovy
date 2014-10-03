@@ -18,6 +18,7 @@ package org.gradle.internal.service
 
 import org.gradle.api.Action
 import org.gradle.internal.Factory
+import org.gradle.internal.concurrent.Stoppable
 import org.gradle.util.TextUtil
 import spock.lang.Specification
 
@@ -94,6 +95,28 @@ class DefaultServiceRegistryTest extends Specification {
         registry.get(BigDecimal) == value
         registry.get(Number) == value
         registry.get(Object) == value
+    }
+
+    def createsInstanceOfServiceImplementation() {
+        def registry = new DefaultServiceRegistry()
+        registry.register({ ServiceRegistration registration ->
+            registration.add(TestServiceImpl)
+        } as Action)
+
+        expect:
+        registry.get(TestService) instanceof TestServiceImpl
+        registry.get(TestService) == registry.get(TestServiceImpl)
+    }
+
+    def injectsServicesIntoServiceImplementation() {
+        def registry = new DefaultServiceRegistry()
+        registry.register({ ServiceRegistration registration ->
+            registration.add(ServiceWithDependency)
+            registration.add(TestServiceImpl)
+        } as Action)
+
+        expect:
+        registry.get(ServiceWithDependency).service == registry.get(TestServiceImpl)
     }
 
     def usesFactoryMethodOnProviderToCreateServiceInstance() {
@@ -509,6 +532,7 @@ class DefaultServiceRegistryTest extends Specification {
         given:
         registry.register({ ServiceRegistration registration ->
             registration.add(Number, 12)
+            registration.add(TestServiceImpl)
             registration.addProvider(new Object() {
                 String createString() {
                     return "hi"
@@ -518,6 +542,7 @@ class DefaultServiceRegistryTest extends Specification {
 
         expect:
         registry.get(Number) == 12
+        registry.get(TestServiceImpl)
         registry.get(String) == "hi"
     }
 
@@ -565,6 +590,19 @@ class DefaultServiceRegistryTest extends Specification {
         ServiceLookupException e = thrown()
         e.message == 'Could not configure services using BrokenConfigureProvider.configure().'
         e.cause == BrokenConfigureProvider.failure
+    }
+
+    def failsWhenCannotCreateServiceInstanceFromImplementationClass() {
+        given:
+        registry.register({ registration -> registration.add(ClassWithBrokenConstructor)} as Action)
+
+        when:
+        registry.get(ClassWithBrokenConstructor)
+
+        then:
+        ServiceCreationException e = thrown()
+        e.message == 'Could not create service of type ClassWithBrokenConstructor.'
+        e.cause == ClassWithBrokenConstructor.failure
     }
 
     def canGetAllServicesOfAGivenType() {
@@ -770,6 +808,18 @@ class DefaultServiceRegistryTest extends Specification {
         noExceptionThrown()
     }
 
+    def closeInvokesCloseMethodOnEachServiceCreatedFromImplementationClass() {
+        given:
+        registry.register({ registration -> registration.add(ClosableService)} as Action)
+        def service = registry.get(ClosableService)
+
+        when:
+        registry.close()
+
+        then:
+        service.closed
+    }
+
     def closeInvokesCloseMethodOnEachServiceCreatedByProviderFactoryMethod() {
         def service = Mock(TestStopService)
 
@@ -791,20 +841,20 @@ class DefaultServiceRegistryTest extends Specification {
     def closeClosesServicesInDependencyOrder() {
         def service1 = Mock(TestCloseService)
         def service2 = Mock(TestStopService)
-        def service3 = Mock(Closeable)
+        def service3 = Mock(ClosableService)
         def registry = new DefaultServiceRegistry()
 
         given:
         registry.addProvider(new Object() {
-            TestStopService createService2(Closeable b) {
+            TestStopService createService2(ClosableService b) {
                 return service2
             }
-            Closeable createService3() {
+            ClosableService createService3() {
                 return service3
             }
         })
         registry.addProvider(new Object() {
-            TestCloseService createService1(TestStopService a, Closeable b) {
+            TestCloseService createService1(TestStopService a, ClosableService b) {
                 return service1
             }
         })
@@ -827,19 +877,19 @@ class DefaultServiceRegistryTest extends Specification {
     def closeContinuesToCloseServicesAfterFailingToStopSomeService() {
         def service1 = Mock(TestCloseService)
         def service2 = Mock(TestStopService)
-        def service3 = Mock(Closeable)
+        def service3 = Mock(ClosableService)
         def failure = new RuntimeException()
         def registry = new DefaultServiceRegistry()
 
         given:
         registry.addProvider(new Object() {
-            TestStopService createService2(Closeable b) {
+            TestStopService createService2(ClosableService b) {
                 return service2
             }
-            TestCloseService createService1(TestStopService a, Closeable b) {
+            TestCloseService createService1(TestStopService a) {
                 return service1
             }
-            Closeable createService3() {
+            ClosableService createService3() {
                 return service3
             }
         })
@@ -959,6 +1009,20 @@ class DefaultServiceRegistryTest extends Specification {
         int value;
         public BigDecimal create() {
             return BigDecimal.valueOf(value++)
+        }
+    }
+
+    private interface TestService {
+    }
+
+    private static class TestServiceImpl implements TestService {
+    }
+
+    private static class ServiceWithDependency {
+        final TestService service
+
+        ServiceWithDependency(TestService service) {
+            this.service = service
         }
     }
 
@@ -1146,15 +1210,27 @@ class DefaultServiceRegistryTest extends Specification {
         }
     }
 
-    public interface TestCloseService {
+    public interface TestCloseService extends Closeable {
         void close()
     }
 
-    public interface TestStopService {
+    public interface TestStopService extends Stoppable {
         void stop()
     }
 
-    public interface ClosableServiceRegistry extends ServiceRegistry {
-        void close()
+    static class ClassWithBrokenConstructor {
+        static def failure = new RuntimeException("broken")
+
+        ClassWithBrokenConstructor() {
+            throw failure
+        }
+    }
+
+    static class ClosableService implements Closeable {
+        boolean closed
+
+        void close() {
+            closed = true
+        }
     }
 }

@@ -38,7 +38,7 @@ import java.util.Set;
  *
  * <p>Each task belongs to a {@link Project}. You can use the various methods on {@link
  * org.gradle.api.tasks.TaskContainer} to create and lookup task instances. For example, {@link
- * org.gradle.api.tasks.TaskContainer#add(String)} creates an empty task with the given name. You can also use the
+ * org.gradle.api.tasks.TaskContainer#create(String)} creates an empty task with the given name. You can also use the
  * {@code task} keyword in your build file: </p>
  * <pre>
  * task myTask
@@ -76,8 +76,9 @@ import java.util.Set;
  * all of its dependencies and any "must run after" tasks have been executed.</p>
  *
  * <p>Dependencies to a task are controlled using {@link #dependsOn(Object...)} or {@link #setDependsOn(Iterable)},
- * and {@link #mustRunAfter(Object...)} or {@link #setMustRunAfter(Iterable)} are used to specify ordering between tasks. You can use objects
- * of any of the following types to specify dependencies and ordering:</p>
+ * and {@link #mustRunAfter(Object...)}, {@link #setMustRunAfter(Iterable)}, {@link #shouldRunAfter(Object...)} and
+ * {@link #setShouldRunAfter(Iterable)} are used to specify ordering between tasks. You can use objects of any of
+ * the following types to specify dependencies and ordering:</p>
  *
  * <ul>
  *
@@ -108,8 +109,8 @@ import java.util.Set;
  *
  * <a name="properties"/> <h4>Dynamic Properties</h4>
  *
- * <p>A {@code Task} has 3 'scopes' for properties. You can access these properties by name from the build file or by
- * calling the {@link #property(String)} method.</p>
+ * <p>A {@code Task} has 4 'scopes' for properties. You can access these properties by name from the build file or by
+ * calling the {@link #property(String)} method. You can change the value of these properties by calling the {@link #setProperty(String, Object)} method.</p>
  *
  * <ul>
  *
@@ -117,13 +118,15 @@ import java.util.Set;
  * implementation class.  The properties of this scope are readable or writable based on the presence of the
  * corresponding getter and setter methods.</li>
  *
- * <li>The <em>additional properties</em> of the task. Each task object maintains a map of additional properties. These
- * are arbitrary name -> value pairs which you can use to dynamically add properties to a task object.  The properties
- * of this scope are readable and writable.</li>
+ * <li>The <em>extensions</em> added to the task by plugins. Each extension is available as a read-only property with the same
+ * name as the extension.</li>
  *
- * <li>The <em>convention</em> properties added to the task by each {@link Plugin} applied to the project. A {@link
- * Plugin} can add properties and methods to a task through the task's {@link Convention} object.  The properties of
- * this scope may be readable or writable, depending on the convention objects.</li>
+ * <li>The <em>convention</em> properties added to the task by plugins. A plugin can add properties and methods to a task through
+ * the task's {@link Convention} object.  The properties of this scope may be readable or writable, depending on the convention objects.</li>
+ *
+ * <li>The <em>extra properties</em> of the task. Each task object maintains a map of additional properties. These
+ * are arbitrary name -> value pairs which you can use to dynamically add properties to a task object.  Once defined, the properties
+ * of this scope are readable and writable.</li>
  *
  * </ul>
  *
@@ -306,7 +309,7 @@ public interface Task extends Comparable<Task>, ExtensionAware {
 
     /**
      * <p>Checks if the task actually did any work.  Even if a Task executes, it may determine that it has nothing to
-     * do.  For example, the Compile task may determine that source files have not changed since the last time a the
+     * do.  For example, a compilation task may determine that source files have not changed since the last time a the
      * task was run.</p>
      *
      * @return true if this task did any work
@@ -426,9 +429,11 @@ public interface Task extends Comparable<Task>, ExtensionAware {
      *
      * <li>If this task object has a property with the given name, return the value of the property.</li>
      *
-     * <li>If this task has an additional property with the given name, return the value of the property.</li>
+     * <li>If this task has an extension with the given name, return the extension. </li>
      *
      * <li>If this task's convention object has a property with the given name, return the value of the property.</li>
+     *
+     * <li>If this task has an extra property with the given name, return the value of the property.</li>
      *
      * <li>If not found, throw {@link MissingPropertyException}</li>
      *
@@ -459,17 +464,16 @@ public interface Task extends Comparable<Task>, ExtensionAware {
      *
      * <li>The task's convention object.</li>
      *
-     * <li>The task's additional properties.</li>
+     * <li>The task's extra properties.</li>
      *
      * </ol>
      *
-     * <p>If the property is not found in any of these locations, it is added to the project's additional
-     * properties.</p>
+     * If the property is not found, a {@link groovy.lang.MissingPropertyException} is thrown.
      *
      * @param name The name of the property
      * @param value The value of the property
      */
-    void setProperty(String name, Object value);
+    void setProperty(String name, Object value) throws MissingPropertyException;
 
     /**
      * <p>Returns the {@link Convention} object for this task. A {@link Plugin} can use the convention object to
@@ -633,5 +637,55 @@ public interface Task extends Comparable<Task>, ExtensionAware {
      */
     @Incubating
     TaskDependency getFinalizedBy();
+
+    /**
+     * <p>Specifies that this task should run after all of the supplied tasks.</p>
+     *
+     * <pre autoTested="true">
+     * task taskY {
+     *     shouldRunAfter "taskX"
+     * }
+     * </pre>
+     *
+     * <p>For each supplied task, this action adds a task 'ordering', and does not specify a 'dependency' between the tasks.
+     * As such, it is still possible to execute 'taskY' without first executing the 'taskX' in the example.</p>
+     *
+     * <p>See <a href="#dependencies">here</a> for a description of the types of objects which can be used to specify
+     * an ordering relationship.</p>
+     *
+     * @param paths The tasks this task should run after.
+     *
+     * @return the task object this method is applied to
+     */
+    @Incubating
+    TaskDependency shouldRunAfter(Object... paths);
+
+    /**
+     * <p>Specifies the set of tasks that this task should run after.</p>
+     *
+     * <pre autoTested="true">
+     * task taskY {
+     *     shouldRunAfter = ["taskX1", "taskX2"]
+     * }
+     * </pre>
+     *
+     * <p>For each supplied task, this action adds a task 'ordering', and does not specify a 'dependency' between the tasks.
+     * As such, it is still possible to execute 'taskY' without first executing the 'taskX' in the example.</p>
+     *
+     * <p>See <a href="#dependencies">here</a> for a description of the types of objects which can be used to specify
+     * an ordering relationship.</p>
+     *
+     * @param shouldRunAfter The set of task paths this task should run after.
+     */
+    @Incubating
+    void setShouldRunAfter(Iterable<?> shouldRunAfter);
+
+    /**
+     * <p>Returns tasks that this task should run after.</p>
+     *
+     * @return The tasks that this task should run after. Returns an empty set if this task has no tasks it must run after.
+     */
+    @Incubating
+    TaskDependency getShouldRunAfter();
 }
 

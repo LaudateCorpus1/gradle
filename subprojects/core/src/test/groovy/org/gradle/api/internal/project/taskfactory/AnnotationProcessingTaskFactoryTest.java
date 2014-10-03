@@ -22,10 +22,23 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.AbstractTask;
+import org.gradle.api.internal.ClassGenerator;
 import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.internal.project.DefaultProject;
-import org.gradle.api.tasks.*;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputDirectory;
+import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.OutputDirectories;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.OutputFiles;
+import org.gradle.api.tasks.SkipWhenEmpty;
+import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.TaskValidationException;
 import org.gradle.api.tasks.incremental.IncrementalTaskInputs;
+import org.gradle.internal.UncheckedException;
 import org.gradle.test.fixtures.file.TestFile;
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider;
 import org.gradle.util.GFileUtils;
@@ -40,10 +53,15 @@ import org.junit.runner.RunWith;
 import spock.lang.Issue;
 
 import java.io.File;
-import java.util.*;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
-import static org.gradle.internal.reflect.JavaReflectionUtil.readField;
 import static org.gradle.util.Matchers.isEmpty;
 import static org.gradle.util.WrapUtil.toList;
 import static org.gradle.util.WrapUtil.toSet;
@@ -81,12 +99,13 @@ public class AnnotationProcessingTaskFactoryTest {
 
     private <T extends Task> T expectTaskCreated(final Class<T> type, final Object... params) {
         DefaultProject project = TestUtil.createRootProject();
+        final Class<? extends T> decorated = project.getServices().get(ClassGenerator.class).generate(type);
         T task = AbstractTask.injectIntoNewInstance(project, "task", new Callable<T>() {
             public T call() throws Exception {
                 if (params.length > 0) {
-                    return type.cast(type.getConstructors()[0].newInstance(params));
+                    return type.cast(decorated.getConstructors()[0].newInstance(params));
                 } else {
-                    return type.newInstance();
+                    return decorated.newInstance();
                 }
             }
         });
@@ -592,7 +611,7 @@ public class AnnotationProcessingTaskFactoryTest {
     }
 
     @Test
-    @Issue("http://issues.gradle.org/browse/GRADLE-2815")
+    @Issue("https://issues.gradle.org/browse/GRADLE-2815")
     public void registersSpecifiedBooleanInputValue() {
         TaskWithBooleanInput task = expectTaskCreated(TaskWithBooleanInput.class, true);
         assertThat(task.getInputs().getProperties().get("inputValue"), equalTo((Object) true));
@@ -697,6 +716,26 @@ public class AnnotationProcessingTaskFactoryTest {
             assertThat(actualMessages, equalTo(new HashSet<String>(Arrays.asList(expectedErrorMessages))));
         }
     }
+
+    public static <T> T readField(Object target, Class<T> type, String name) {
+        Class<?> objectType = target.getClass();
+        while (objectType != null) {
+            try {
+                Field field = objectType.getDeclaredField(name);
+                field.setAccessible(true);
+                return (T) field.get(target);
+            } catch (NoSuchFieldException ignore) {
+                // ignore
+            } catch (Exception e) {
+                throw UncheckedException.throwAsUncheckedException(e);
+            }
+
+            objectType = objectType.getSuperclass();
+        }
+
+        throw new RuntimeException("Could not find field '" + name + "' with type '" + type.getClass() + "' on class '" + target.getClass() + "'");
+    }
+
 
     public static class TestTask extends DefaultTask {
         final Runnable action;
@@ -898,14 +937,15 @@ public class AnnotationProcessingTaskFactoryTest {
     }
     
     public static class TaskWithOptionalOutputFile extends DefaultTask {
-        @OutputFile @Optional
+        @OutputFile @org.gradle.api.tasks.Optional
         public File getOutputFile() {
             return null;
         }
     }
 
     public static class TaskWithOptionalOutputFiles extends DefaultTask {
-        @OutputFiles @Optional
+        @OutputFiles
+        @org.gradle.api.tasks.Optional
         public List<File> getOutputFiles() {
             return null;
         }
@@ -938,14 +978,14 @@ public class AnnotationProcessingTaskFactoryTest {
     }
     
     public static class TaskWithOptionalOutputDir extends DefaultTask {
-        @OutputDirectory @Optional
+        @OutputDirectory @org.gradle.api.tasks.Optional
         public File getOutputDir() {
             return null;
         }
     }
 
     public static class TaskWithOptionalOutputDirs extends DefaultTask {
-        @OutputDirectories @Optional
+        @OutputDirectories @org.gradle.api.tasks.Optional
         public File getOutputDirs() {
             return null;
         }
@@ -981,7 +1021,7 @@ public class AnnotationProcessingTaskFactoryTest {
     }
 
     public static class TaskWithOptionalInputFile extends DefaultTask {
-        @InputFile @Optional
+        @InputFile @org.gradle.api.tasks.Optional
         public File getInputFile() {
             return null;
         }
@@ -1027,7 +1067,7 @@ public class AnnotationProcessingTaskFactoryTest {
     }
 
     public static class TaskWithOptionalNestedBean extends DefaultTask {
-        @Nested @Optional
+        @Nested @org.gradle.api.tasks.Optional
         public Bean getBean() {
             return null;
         }
@@ -1036,7 +1076,7 @@ public class AnnotationProcessingTaskFactoryTest {
     public static class TaskWithOptionalNestedBeanWithPrivateType extends DefaultTask {
         Bean2 bean = new Bean2();
 
-        @Nested @Optional
+        @Nested @org.gradle.api.tasks.Optional
         public Bean getBean() {
             return null;
         }

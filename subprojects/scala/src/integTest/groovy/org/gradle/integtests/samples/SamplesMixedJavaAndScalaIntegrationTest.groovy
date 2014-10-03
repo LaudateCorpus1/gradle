@@ -17,8 +17,10 @@
 package org.gradle.integtests.samples
 
 import org.gradle.integtests.fixtures.AbstractIntegrationTest
-import org.gradle.integtests.fixtures.JUnitXmlTestExecutionResult
+import org.gradle.integtests.fixtures.DefaultTestExecutionResult
+import org.gradle.integtests.fixtures.ForkScalaCompileInDaemonModeFixture
 import org.gradle.integtests.fixtures.Sample
+import org.gradle.integtests.fixtures.executer.GradleContextualExecuter
 import org.gradle.test.fixtures.file.TestFile
 import org.junit.Rule
 import org.junit.Test
@@ -28,6 +30,7 @@ import static org.hamcrest.Matchers.containsString
 class SamplesMixedJavaAndScalaIntegrationTest extends AbstractIntegrationTest {
 
     @Rule public final Sample sample = new Sample(testDirectoryProvider, 'scala/mixedJavaAndScala')
+    @Rule public final ForkScalaCompileInDaemonModeFixture forkScalaCompileInDaemonModeFixture = new ForkScalaCompileInDaemonModeFixture(executer, testDirectoryProvider)
 
     @Test
     public void canBuildJar() {
@@ -37,7 +40,7 @@ class SamplesMixedJavaAndScalaIntegrationTest extends AbstractIntegrationTest {
         executer.inDirectory(projectDir).withTasks('clean', 'build').run()
 
         // Check tests have run
-        JUnitXmlTestExecutionResult result = new JUnitXmlTestExecutionResult(projectDir)
+        def result = new DefaultTestExecutionResult(projectDir)
         result.assertTestClassesExecuted('org.gradle.sample.PersonTest')
 
         // Check contents of Jar
@@ -54,6 +57,11 @@ class SamplesMixedJavaAndScalaIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     public void canBuildDocs() {
+        if (GradleContextualExecuter.isDaemon()) {
+            // don't load scala into the daemon as it exhausts permgen
+            return
+        }
+
         TestFile projectDir = sample.dir
         executer.inDirectory(projectDir).withTasks('clean', 'javadoc', 'scaladoc').run()
 

@@ -32,14 +32,18 @@ public class HashUtil {
     public static HashValue createHash(File file, String algorithm) {
         try {
             return createHash(new FileInputStream(file), algorithm);
+        } catch (UncheckedIOException e) {
+            // Catch any unchecked io exceptions and add the file path for troubleshooting
+            throw new UncheckedIOException(String.format("Failed to create %s hash for file %s.", algorithm, file.getAbsolutePath()), e.getCause());
         } catch (FileNotFoundException e) {
             throw new UncheckedIOException(e);
         }
     }
 
     public static HashValue createHash(InputStream instr, String algorithm) {
-        MessageDigest messageDigest = createMessageDigest(algorithm);
+        MessageDigest messageDigest;
         try {
+            messageDigest = createMessageDigest(algorithm);
             byte[] buffer = new byte[4096];
             try {
                 while (true) {

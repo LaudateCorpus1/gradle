@@ -20,48 +20,26 @@ import org.gradle.api.artifacts.ConfigurationContainer
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.artifacts.dsl.RepositoryHandler
 import org.gradle.groovy.scripts.ScriptSource
-import org.gradle.util.WrapUtil
-import org.gradle.internal.classloader.MutableURLClassLoader
 import org.gradle.util.ConfigureUtil
-
 import spock.lang.Specification
 
 class DefaultScriptHandlerTest extends Specification {
-    RepositoryHandler repositoryHandler = Mock()
-    DependencyHandler dependencyHandler = Mock()
-    ConfigurationContainer configurationContainer = Mock()
-    Configuration configuration = Mock()
-    ScriptSource scriptSource = Mock()
-    def mutableLoader = Mock(MutableURLClassLoader)
-    def classLoader = Mock(ScriptClassLoader) {
-        getMutableClassLoader() >> mutableLoader
+    def repositoryHandler = Mock(RepositoryHandler)
+    def dependencyHandler = Mock(DependencyHandler)
+    def configurationContainer = Mock(ConfigurationContainer)
+    def configuration = Stub(Configuration)
+    def scriptSource = Stub(ScriptSource)
+    def baseClassLoader = new ClassLoader() {}
+    def classLoaderScope = Stub(ClassLoaderScope) {
+        getLocalClassLoader() >> baseClassLoader
     }
 
     def "adds classpath configuration"() {
         when:
-        new DefaultScriptHandler(scriptSource, repositoryHandler, dependencyHandler, configurationContainer, classLoader)
+        new DefaultScriptHandler(scriptSource, repositoryHandler, dependencyHandler, configurationContainer, new ScriptHandlerClassLoaderFactory(scriptSource, classLoaderScope))
 
         then:
         1 * configurationContainer.create('classpath')
-    }
-
-    def "creates a class loader and adds contents of classpath configuration"() {
-        def handler = handler()
-        def classLoader = handler.classLoader
-
-        expect:
-        classLoader.is this.classLoader
-
-        def file1 = new File('a')
-        def file2 = new File('b')
-
-        when:
-        handler.updateClassPath()
-
-        then:
-        1 * configuration.getFiles() >> WrapUtil.toSet(file1, file2)
-        1 * mutableLoader.addURL(file1.toURI().toURL())
-        1 * mutableLoader.addURL(file2.toURI().toURL())
     }
 
     def "can configure repositories"() {
@@ -92,6 +70,6 @@ class DefaultScriptHandlerTest extends Specification {
 
     private DefaultScriptHandler handler() {
         1 * configurationContainer.create('classpath') >> configuration
-        return new DefaultScriptHandler(scriptSource, repositoryHandler, dependencyHandler, configurationContainer, classLoader)
+        return new DefaultScriptHandler(scriptSource, repositoryHandler, dependencyHandler, configurationContainer, new ScriptHandlerClassLoaderFactory(scriptSource, classLoaderScope))
     }
 }

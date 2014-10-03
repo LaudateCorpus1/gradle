@@ -16,11 +16,12 @@
 
 package org.gradle.api.tasks.diagnostics.internal.graph.nodes;
 
+import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ModuleComponentSelector;
 import org.gradle.api.artifacts.result.ComponentSelectionReason;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
-import org.gradle.api.internal.artifacts.component.DefaultModuleComponentIdentifier;
+import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier;
 
 import java.util.Collections;
 import java.util.Set;
@@ -32,15 +33,15 @@ public class UnresolvedDependencyEdge implements DependencyEdge {
     public UnresolvedDependencyEdge(UnresolvedDependencyResult dependency) {
         this.dependency = dependency;
         ModuleComponentSelector attempted = (ModuleComponentSelector)dependency.getAttempted();
-        actual = DefaultModuleComponentIdentifier.newId(attempted.getGroup(), attempted.getName(), attempted.getVersion());
+        actual = DefaultModuleComponentIdentifier.newId(attempted.getGroup(), attempted.getModule(), attempted.getVersion());
     }
 
     public boolean isResolvable() {
         return false;
     }
 
-    public ModuleComponentSelector getRequested() {
-        return (ModuleComponentSelector)dependency.getRequested();
+    public ComponentSelector getRequested() {
+        return dependency.getRequested();
     }
 
     public ModuleComponentIdentifier getActual() {

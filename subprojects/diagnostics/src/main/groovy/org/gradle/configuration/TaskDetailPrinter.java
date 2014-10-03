@@ -77,8 +77,8 @@ public class TaskDetailPrinter {
 
             output.println();
             printTaskDescription(output, tasksByType);
-            output.println();
             if (multipleClasses) {
+                output.println();
                 output.println("----------------------");
             }
         }
@@ -150,11 +150,14 @@ public class TaskDetailPrinter {
             final String optionString = String.format("--%s", currentOption);
             output.text(INDENT).withStyle(UserInput).text(optionString);
 
-            final List<String> availableValues = withoutDuplicates(flattenToList(String.class, collect(descriptorsForCurrentName, new Transformer<List<String>, OptionDescriptor>() {
+            List<List<String>> availableValuesByDescriptor = collect(descriptorsForCurrentName, new Transformer<List<String>, OptionDescriptor>() {
                 public List<String> transform(OptionDescriptor original) {
                     return original.getAvailableValues();
                 }
-            })));
+            });
+
+            List<String> commonAvailableValues = intersection(availableValuesByDescriptor);
+            Set<String> availableValues = new TreeSet<String>(commonAvailableValues);
             //description does not differ between task objects, grab first one
             output.text(INDENT).text(descriptorsForCurrentName.iterator().next().getDescription());
             if (!availableValues.isEmpty()) {
@@ -162,7 +165,7 @@ public class TaskDetailPrinter {
                 final LinePrefixingStyledTextOutput prefixedOutput = createIndentedOutput(output, optionDescriptionOffset);
                 prefixedOutput.println();
                 prefixedOutput.println("Available values are:");
-                for (String value : sort(availableValues)) {
+                for (String value : availableValues) {
                     prefixedOutput.text(INDENT);
                     prefixedOutput.withStyle(UserInput).println(value);
                 }

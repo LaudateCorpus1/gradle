@@ -22,14 +22,14 @@ import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.ArtifactRepository;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
-import org.gradle.api.internal.Actions;
+import org.gradle.internal.Actions;
 import org.gradle.api.internal.artifacts.repositories.layout.PatternRepositoryLayout;
 
 public class JavaScriptRepositoriesExtension {
 
     public static final String NAME = "javaScript";
 
-    public static final String GRADLE_PUBLIC_JAVASCRIPT_REPO_URL = "http://repo.gradle.org/gradle/javascript-public";
+    public static final String GRADLE_PUBLIC_JAVASCRIPT_REPO_URL = "https://repo.gradle.org/gradle/javascript-public";
     public static final String GOOGLE_APIS_REPO_URL = "http://ajax.googleapis.com/ajax/libs";
 
     private final RepositoryHandler repositories;

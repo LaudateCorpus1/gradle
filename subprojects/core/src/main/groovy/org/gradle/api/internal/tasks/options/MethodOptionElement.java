@@ -16,8 +16,7 @@
 
 package org.gradle.api.internal.tasks.options;
 
-import org.gradle.internal.reflect.JavaMethod;
-import org.gradle.internal.reflect.JavaReflectionUtil;
+import org.gradle.internal.typeconversion.ValueAwareNotationParser;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -25,13 +24,10 @@ import java.util.List;
 public class MethodOptionElement extends AbstractOptionElement {
 
     private final Method method;
-    private List<String> availableValues;
-    private Class<?> optionType;
 
-    public MethodOptionElement(Option option, Method method) {
-        super(option.option(), option, method.getDeclaringClass());
+    MethodOptionElement(Option option, Method method, Class<?> optionType, ValueAwareNotationParser<?> notationParser) {
+        super(option.option(), option, optionType, method.getDeclaringClass(), notationParser);
         this.method = method;
-        this.optionType = calculateOptionType();
         assertMethodTypeSupported(getOptionName(), method);
         assertValidOptionName();
     }
@@ -42,29 +38,8 @@ public class MethodOptionElement extends AbstractOptionElement {
         }
     }
 
-    private Class<?> calculateOptionType() {
-        if (method.getParameterTypes().length == 0) {
-            //flag method
-            return Void.TYPE;
-        } else {
-            return calculateOptionType(method.getParameterTypes()[0]);
-        }
-    }
-
     public Class<?> getDeclaredClass() {
         return method.getDeclaringClass();
-    }
-
-    public List<String> getAvailableValues() {
-        //calculate list lazy to avoid overhead upfront
-        if (availableValues == null) {
-            availableValues = calculdateAvailableValues(optionType);
-        }
-        return availableValues;
-    }
-
-    public Class<?> getOptionType() {
-        return optionType;
     }
 
     public String getElementName() {
@@ -72,14 +47,27 @@ public class MethodOptionElement extends AbstractOptionElement {
     }
 
     public void apply(Object object, List<String> parameterValues) {
-        final JavaMethod<Object, Object> javaMethod = JavaReflectionUtil.method(Object.class, Object.class, method);
         if (parameterValues.size() == 0) {
-            javaMethod.invoke(object, true);
+            invokeMethod(object, method, true);
         } else if (parameterValues.size() > 1) {
             throw new IllegalArgumentException(String.format("Lists not supported for option."));
         } else {
-            Object arg = getParameterObject(parameterValues.get(0));
-            javaMethod.invoke(object, arg);
+            invokeMethod(object, method, getNotationParser().parseNotation(parameterValues.get(0)));
+        }
+    }
+
+    public static MethodOptionElement create(Option option, Method method, OptionNotationParserFactory optionNotationParserFactory){
+        Class<?> optionType = calculateOptionType(method);
+        ValueAwareNotationParser<?> notationParser = createNotationParserOrFail(optionNotationParserFactory, option.option(), optionType, method.getDeclaringClass());
+        return new MethodOptionElement(option, method, optionType, notationParser);
+    }
+
+
+    private static Class<?> calculateOptionType(Method optionMethod) {
+        if (optionMethod.getParameterTypes().length == 0) {
+            return Void.TYPE;
+        } else {
+            return calculateOptionType(optionMethod.getParameterTypes()[0]);
         }
     }
 
@@ -88,16 +76,6 @@ public class MethodOptionElement extends AbstractOptionElement {
         if (parameterTypes.length > 1) {
             throw new OptionValidationException(String.format("Option '%s' cannot be linked to methods with multiple parameters in class '%s#%s'.",
                     optionName, method.getDeclaringClass().getName(), method.getName()));
-        }
-
-        if (parameterTypes.length == 1) {
-            final Class<?> parameterType = parameterTypes[0];
-            if (!(parameterType == Boolean.class || parameterType == Boolean.TYPE)
-                    && !parameterType.isAssignableFrom(String.class)
-                    && !parameterType.isEnum()) {
-                throw new OptionValidationException(String.format("Option '%s' cannot be casted to parameter type '%s' in class '%s'.",
-                        optionName, parameterType.getName(), method.getDeclaringClass().getName()));
-            }
         }
     }
 }

@@ -18,14 +18,15 @@ package org.gradle.logging.internal;
 
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.logging.StandardOutputListener;
-import org.gradle.internal.CompositeStoppable;
-import org.gradle.internal.Stoppable;
+import org.gradle.internal.concurrent.CompositeStoppable;
+import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.logging.LoggingManagerInternal;
 
+import java.io.Closeable;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-public class DefaultLoggingManager implements LoggingManagerInternal {
+public class DefaultLoggingManager implements LoggingManagerInternal, Closeable {
     private boolean started;
     private final StartableLoggingSystem loggingSystem;
     private final StartableLoggingSystem stdOutLoggingSystem;
@@ -77,6 +78,10 @@ public class DefaultLoggingManager implements LoggingManagerInternal {
             started = false;
         }
         return this;
+    }
+
+    public void close() {
+        stop();
     }
 
     public DefaultLoggingManager setLevel(LogLevel logLevel) {
